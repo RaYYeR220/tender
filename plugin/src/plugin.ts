@@ -16,17 +16,20 @@ import {
   railFromAddress,
   toAtomic,
   usdcBalance,
+  verifyPayment,
   type CheckoutRef,
   type Decision,
   type Finding,
   type Product,
   type Quote,
+  type Transfer,
 } from "../../packages/core/src/index.js";
 import { proposeX402 } from "./paybox.js";
 
 const PROTOCOL_VERSION = "2026-07-28";
 const VERSION = "0.1.0";
-const REGISTRY_URL = process.env.TENDER_REGISTRY_URL ?? "https://tender-checkout.vercel.app/registry.json";
+const SITE_URL = (process.env.TENDER_SITE_URL ?? "https://tender-checkout.vercel.app").replace(/\/$/, "");
+const REGISTRY_URL = `${SITE_URL}/registry.json`;
 
 const link = z.string().min(1).max(512).describe("A MoonPay Commerce pay link URL (moonpay.hel.io/pay/…), deposit link, or 24-character pay link id.");
 const payer = z.string().min(32).max(64).describe("Public address of the PayBox wallet that will pay: a Solana address or a 0x Base address.");
@@ -335,6 +338,78 @@ function createServer() {
             text: `Proposed ${order.amount_usd} USDC on ${order.rail} for product ${quoted(order.product)} from merchant ${quoted(order.merchant)} (names are merchant-supplied). PayBox will ask for approval; nothing is paid until then.${notes}`,
           }],
           structuredContent: { order, ...proposal.structuredContent },
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  const transferShape = z.object({
+    tx: z.string(),
+    explorer: z.string(),
+    from: z.string(),
+    to: z.string(),
+    amount_usd: z.string(),
+    at: z.string().nullable(),
+  }).strict();
+  const view = (t: Transfer) => ({
+    tx: t.tx,
+    explorer: t.explorer,
+    from: t.from,
+    to: t.to,
+    amount_usd: t.amountUsd,
+    at: t.at === null ? null : new Date(t.at * 1000).toISOString(),
+  });
+
+  server.registerTool(
+    "verify_purchase",
+    {
+      title: "Verify a MoonPay Commerce payment on-chain",
+      description:
+        "Builds a receipt from chain data alone: confirms the USDC payment left payer_address, follows MoonPay Commerce's deposit wallet to the sweep, and with the pay link checks that the merchant's listed payout wallet received its share and that every unit is accounted for. Use the payment transaction from the finished PayBox request. Read-only.",
+      inputSchema: z.object({
+        tx: z.string().min(64).max(90).describe("Payment transaction: a Solana signature or a 0x Base transaction hash."),
+        payer_address: payer,
+        link: link.optional().describe("The pay link that was paid; needed to attribute the sweep to the merchant."),
+      }).strict(),
+      outputSchema: z.object({
+        status: z.enum(["settled", "swept", "awaiting_sweep", "unverified"]),
+        rail,
+        payment: transferShape,
+        merchant_received: transferShape.nullable(),
+        fees: z.array(transferShape),
+        checks: z.array(z.object({ name: z.string(), ok: z.boolean().nullable(), detail: z.string() }).strict()),
+        receipt_url: z.string(),
+      }).strict(),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ tx, payer_address, link: input }) => {
+      try {
+        if (!railFromAddress(payer_address)) throw new TenderError("INVALID_PAYER", "payer_address must be a Solana address or a 0x Base address.");
+        const ref = input ? parseCheckoutRef(input) : null;
+        const product = ref?.kind === "paylink" ? await getPaylink(ref.id) : null;
+        const receipt = await verifyPayment({ tx, payer: payer_address, product });
+        const params = new URLSearchParams({ payer: payer_address, ...(ref?.kind === "paylink" ? { link: ref.id } : {}) });
+        const receiptUrl = `${SITE_URL}/r/${receipt.rail}/${tx}?${params}`;
+        const marks = receipt.checks.map((c) => `${c.ok === true ? "OK" : c.ok === false ? "FAIL" : "PENDING"} ${c.name}: ${c.detail}`).join("\n");
+        const text = [
+          `Receipt ${receipt.status.toUpperCase()} on ${receipt.rail}: ${receipt.payment.amountUsd} USDC paid.`,
+          receipt.sweep?.merchant ? `Merchant received ${receipt.sweep.merchant.amountUsd}.` : null,
+          marks,
+          `Shareable receipt: ${receiptUrl}`,
+        ].filter(Boolean).join("\n");
+        return {
+          content: [{ type: "text", text }],
+          structuredContent: {
+            status: receipt.status,
+            rail: receipt.rail,
+            payment: view(receipt.payment),
+            merchant_received: receipt.sweep?.merchant ? view(receipt.sweep.merchant) : null,
+            fees: (receipt.sweep?.fees ?? []).map(view),
+            checks: receipt.checks,
+            receipt_url: receiptUrl,
+          },
         };
       } catch (error) {
         return failure(error);

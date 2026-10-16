@@ -7,3 +7,4 @@ export * from "./product.js";
 export * from "./quote.js";
 export * from "./ref.js";
 export * from "./rpc.js";
+export * from "./verify.js";
