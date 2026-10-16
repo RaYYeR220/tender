@@ -1,0 +1,95 @@
+{
+ "id": "663e178abcab89f49f95d889",
+ "name": "AxisBot | Beginner Plan",
+ "description": "AxisBot - snipe and sell SPL tokens at lightning speed. \nOur sniping bot helps you maintain a higher level of security while also giving you the fastest sniping speed possible.\n\nBEGINNER PLAN:\n\n1. You can test the bot, try the functionality.\n2. Provided in the format of a subscription for 1 month, after the expiration of the subscription period the bot will be disabled.\n\nYou will receive a DropBox",
+ "template": "OTHER",
+ "disabled": false,
+ "inactive": false,
+ "price": "400000000",
+ "dynamic": false,
+ "maxTransactions": 68,
+ "createdAt": "2024-05-10T12:48:10.755Z",
+ "features": {
+  "canChangeQuantity": true,
+  "canChangePrice": false,
+  "requireQuantityLimits": true,
+  "requireCountry": false,
+  "requireEmail": false,
+  "requireDeliveryAddress": false,
+  "requireDiscordUsername": false,
+  "requireDiscordLogin": false,
+  "requireFullName": false,
+  "requirePhoneNumber": false,
+  "requireTwitterUsername": false,
+  "requireTelegramUsername": false,
+  "requireProductDetails": false,
+  "requireAdditionalProductDetails": false,
+  "requireMaxTransactions": true,
+  "requireNftGate": false,
+  "requireDiscordAuth": false,
+  "requireAccessCode": false,
+  "requireXFollow": false,
+  "canSwapTokens": false,
+  "canPayWithCard": true,
+  "requireAllowlist": false,
+  "requireTradingViewUsername": false,
+  "requireAirdrop": false,
+  "requireCaptchaValidation": false
+ },
+ "creator": {
+  "isDisabled": true
+ },
+ "company": {
+  "id": "6626e5e45075e87d06ad3f8d",
+  "name": "AxisBot",
+  "websiteUrl": "https://axisbot.xyz",
+  "twitterUsername": null,
+  "twitterConfirmed": false,
+  "kycVerified": false,
+  "kybVerified": false,
+  "isVerified": false
+ },
+ "pricingCurrency": {
+  "id": "6340313846e4f91b8abc5195",
+  "symbol": "SOL",
+  "decimals": 9,
+  "mintAddress": "11111111111111111111111111111111",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "currency": {
+  "id": "6340313846e4f91b8abc5195",
+  "symbol": "SOL",
+  "decimals": 9,
+  "mintAddress": "11111111111111111111111111111111",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "recipients": [
+  {
+   "currency": {
+    "id": "6340313846e4f91b8abc5195",
+    "symbol": "SOL",
+    "decimals": 9,
+    "mintAddress": "11111111111111111111111111111111",
+    "blockchain": {
+     "name": "SOL",
+     "engine": {
+      "type": "SOL"
+     }
+    }
+   },
+   "wallet": {
+    "publicKey": "AXSBTx227eh6ZtEu5kHrKCWviW6R1JJV7oDJ63tX9GiH"
+   }
+  }
+ ]
+}

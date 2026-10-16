@@ -1,0 +1,25 @@
+{
+ "status": 402,
+ "paymentRequired": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiL3YxL3g0MDIvY2hlY2tvdXQvNjk1Y2IwNTQxNWRlMzc0NjI2MzU1NjQwP2Ftb3VudD0xMDAwMDAwJnBheWVyQWRkcmVzcz03VkEzbjJxNHJ4djlyS3JWRVdKUGRvYTVwU0FTOHhrdTVFQ25QNlZiYkN0cyIsImRlc2NyaXB0aW9uIjoiVGhhbmtzISIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJzb2xhbmE6NWV5a3Q0VXNGdjhQOE5KZFRSRXBZMXZ6cUtxWkt2ZHAiLCJhbW91bnQiOiIxMDAwMDAwIiwiYXNzZXQiOiJFUGpGV2RkNUF1ZnFTU3FlTTJxTjF4enliYXBDOEc0d0VHR2tad3lURHQxdiIsInBheVRvIjoiMnJpaVVqNzhadFF0S2JlY3JMRmI2QTR1em5HQXlXQ0JjWEVoMWU1VHRvOHMiLCJtYXhUaW1lb3V0U2Vjb25kcyI6NjAsImV4dHJhIjp7ImZlZVBheWVyIjoiNUM4SnNGRG9UV0RqcnJQSG5IR3FCdzFNZ25EWlQ0YzFmNFJVU0s1R2JOZVEifX1dfQ==",
+ "decoded": {
+  "x402Version": 2,
+  "resource": {
+   "url": "/v1/x402/checkout/695cb05415de374626355640?amount=1000000&payerAddress=7VA3n2q4rxv9rKrVEWJPdoa5pSAS8xku5ECnP6VbbCts",
+   "description": "Thanks!",
+   "mimeType": "application/json"
+  },
+  "accepts": [
+   {
+    "scheme": "exact",
+    "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    "amount": "1000000",
+    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "payTo": "2riiUj78ZtQtKbecrLFb6A4uznGAyWCBcXEh1e5Tto8s",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "5C8JsFDoTWDjrrPHnHGqBw1MgnDZT4c1f4RUSK5GbNeQ"
+    }
+   }
+  ]
+ }
+}

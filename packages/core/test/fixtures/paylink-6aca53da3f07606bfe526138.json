@@ -1,0 +1,129 @@
+{
+ "id": "6aca53da3f07606bfe526138",
+ "name": "CIPC Company Registration",
+ "description": "",
+ "template": "PAYLINK_V2",
+ "disabled": false,
+ "inactive": false,
+ "price": "65000000",
+ "dynamic": false,
+ "maxTransactions": 1,
+ "createdAt": "2026-10-10T15:03:54.738Z",
+ "features": {
+  "canChangeQuantity": false,
+  "canChangePrice": false,
+  "requireQuantityLimits": false,
+  "requireCountry": true,
+  "requireEmail": true,
+  "requireDeliveryAddress": true,
+  "requireDiscordUsername": false,
+  "requireDiscordLogin": false,
+  "requireFullName": true,
+  "requirePhoneNumber": true,
+  "requireTwitterUsername": false,
+  "requireTelegramUsername": false,
+  "requireProductDetails": false,
+  "requireAdditionalProductDetails": false,
+  "requireMaxTransactions": false,
+  "requireNftGate": false,
+  "requireDiscordAuth": false,
+  "requireAccessCode": false,
+  "requireXFollow": false,
+  "canSwapTokens": true,
+  "canPayWithCard": false,
+  "requireAllowlist": false,
+  "requireTradingViewUsername": false,
+  "requireAirdrop": false,
+  "requireCaptchaValidation": false
+ },
+ "creator": {
+  "isDisabled": false
+ },
+ "company": {
+  "id": "6ab6c133ed7b6645b6ddb0fd",
+  "name": "GKroon (Pty) Ltd",
+  "websiteUrl": "https://g-kroon.github.io/GKroon/",
+  "twitterUsername": null,
+  "twitterConfirmed": false,
+  "kycVerified": false,
+  "kybVerified": true,
+  "isVerified": true
+ },
+ "pricingCurrency": {
+  "id": "6340313846e4f91b8abc519b",
+  "symbol": "USDC",
+  "decimals": 6,
+  "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "currency": {
+  "id": "6340313846e4f91b8abc519b",
+  "symbol": "USDC",
+  "decimals": 6,
+  "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "recipients": [
+  {
+   "currency": {
+    "id": "6340313846e4f91b8abc519b",
+    "symbol": "USDC",
+    "decimals": 6,
+    "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "blockchain": {
+     "name": "SOL",
+     "engine": {
+      "type": "SOL"
+     }
+    }
+   },
+   "wallet": {
+    "publicKey": "AAJMtcKAKPzc1JwN7h716b41EMg4fWmXemoz6jKNQqss"
+   }
+  },
+  {
+   "currency": {
+    "id": "6340313846e4f91b8abc519b",
+    "symbol": "USDC",
+    "decimals": 6,
+    "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "blockchain": {
+     "name": "SOL",
+     "engine": {
+      "type": "SOL"
+     }
+    }
+   },
+   "wallet": {
+    "publicKey": "AAJMtcKAKPzc1JwN7h716b41EMg4fWmXemoz6jKNQqss"
+   }
+  },
+  {
+   "currency": {
+    "id": "6340313846e4f91b8abc519b",
+    "symbol": "USDC",
+    "decimals": 6,
+    "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "blockchain": {
+     "name": "SOL",
+     "engine": {
+      "type": "SOL"
+     }
+    }
+   },
+   "wallet": {
+    "publicKey": "AAJMtcKAKPzc1JwN7h716b41EMg4fWmXemoz6jKNQqss"
+   }
+  }
+ ]
+}

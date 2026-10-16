@@ -1,0 +1,95 @@
+{
+ "id": "6a9358d423f54aeb74d19151",
+ "name": "SLC Scanner Pro",
+ "description": "**SLC Trench Scanner**\n\n**Built for the trenches.**\n\nScanner Pro gives you real-time access to the SLC Trench Scanner — continuously monitoring the trenches (both Solana and EVM contracts) and surfacing tokens showing early activity, momentum and movement.\n\n**Scanner Pro includes:**\n\n* Real-time Trench Scanner alerts\n* Momentum alerts as tokens hit new milestones\n* Token, liquidity, and market cap",
+ "template": "PAYLINK_V2",
+ "disabled": false,
+ "inactive": false,
+ "price": "500000000",
+ "dynamic": false,
+ "maxTransactions": null,
+ "createdAt": "2026-08-29T22:10:28.188Z",
+ "features": {
+  "canChangeQuantity": false,
+  "canChangePrice": false,
+  "requireQuantityLimits": false,
+  "requireCountry": false,
+  "requireEmail": true,
+  "requireDeliveryAddress": false,
+  "requireDiscordUsername": true,
+  "requireDiscordLogin": true,
+  "requireFullName": false,
+  "requirePhoneNumber": false,
+  "requireTwitterUsername": false,
+  "requireTelegramUsername": false,
+  "requireProductDetails": false,
+  "requireAdditionalProductDetails": false,
+  "requireMaxTransactions": false,
+  "requireNftGate": false,
+  "requireDiscordAuth": false,
+  "requireAccessCode": false,
+  "requireXFollow": false,
+  "canSwapTokens": false,
+  "canPayWithCard": false,
+  "requireAllowlist": false,
+  "requireTradingViewUsername": false,
+  "requireAirdrop": false,
+  "requireCaptchaValidation": false
+ },
+ "creator": {
+  "isDisabled": false
+ },
+ "company": {
+  "id": "680596a5798c3dc58c07ac66",
+  "name": "SLC",
+  "websiteUrl": "SLCblackledger.org",
+  "twitterUsername": "431Steez",
+  "twitterConfirmed": true,
+  "kycVerified": true,
+  "kybVerified": false,
+  "isVerified": true
+ },
+ "pricingCurrency": {
+  "id": "6340313846e4f91b8abc5195",
+  "symbol": "SOL",
+  "decimals": 9,
+  "mintAddress": "11111111111111111111111111111111",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "currency": {
+  "id": "6340313846e4f91b8abc5195",
+  "symbol": "SOL",
+  "decimals": 9,
+  "mintAddress": "11111111111111111111111111111111",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "recipients": [
+  {
+   "currency": {
+    "id": "6340313846e4f91b8abc5195",
+    "symbol": "SOL",
+    "decimals": 9,
+    "mintAddress": "11111111111111111111111111111111",
+    "blockchain": {
+     "name": "SOL",
+     "engine": {
+      "type": "SOL"
+     }
+    }
+   },
+   "wallet": {
+    "publicKey": "2K5ZcNxSj993GtR8SQebtkL5VBGfWZesoSymr6uXLEFb"
+   }
+  }
+ ]
+}

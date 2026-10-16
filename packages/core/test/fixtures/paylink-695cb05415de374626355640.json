@@ -1,0 +1,112 @@
+{
+ "id": "695cb05415de374626355640",
+ "name": "Thanks!",
+ "description": "",
+ "template": "PAYLINK_V2",
+ "disabled": false,
+ "inactive": false,
+ "price": "0",
+ "dynamic": false,
+ "maxTransactions": 1,
+ "createdAt": "2026-01-06T06:48:52.325Z",
+ "features": {
+  "canChangeQuantity": false,
+  "canChangePrice": true,
+  "requireQuantityLimits": false,
+  "requireCountry": false,
+  "requireEmail": false,
+  "requireDeliveryAddress": false,
+  "requireDiscordUsername": false,
+  "requireDiscordLogin": false,
+  "requireFullName": false,
+  "requirePhoneNumber": false,
+  "requireTwitterUsername": false,
+  "requireTelegramUsername": false,
+  "requireProductDetails": false,
+  "requireAdditionalProductDetails": false,
+  "requireMaxTransactions": false,
+  "requireNftGate": false,
+  "requireDiscordAuth": false,
+  "requireAccessCode": false,
+  "requireXFollow": false,
+  "canSwapTokens": false,
+  "canPayWithCard": true,
+  "requireAllowlist": false,
+  "requireTradingViewUsername": false,
+  "requireAirdrop": false,
+  "requireCaptchaValidation": false
+ },
+ "creator": {
+  "isDisabled": false
+ },
+ "company": {
+  "id": "695cabd52060f623480f9030",
+  "name": "Boot Industries",
+  "websiteUrl": "https://boot.industries",
+  "twitterUsername": "boot_industries",
+  "twitterConfirmed": true,
+  "kycVerified": false,
+  "kybVerified": false,
+  "isVerified": false
+ },
+ "pricingCurrency": {
+  "id": "6340313846e4f91b8abc519b",
+  "symbol": "USDC",
+  "decimals": 6,
+  "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "currency": {
+  "id": "6340313846e4f91b8abc519b",
+  "symbol": "USDC",
+  "decimals": 6,
+  "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "recipients": [
+  {
+   "currency": {
+    "id": "6340313846e4f91b8abc519b",
+    "symbol": "USDC",
+    "decimals": 6,
+    "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "blockchain": {
+     "name": "SOL",
+     "engine": {
+      "type": "SOL"
+     }
+    }
+   },
+   "wallet": {
+    "publicKey": "AuHfKsmAEyRtj9Wtdj2XQyB1L84tHTXifUq1QEsuxejC"
+   }
+  },
+  {
+   "currency": {
+    "id": "6340313846e4f91b8abc5195",
+    "symbol": "SOL",
+    "decimals": 9,
+    "mintAddress": "11111111111111111111111111111111",
+    "blockchain": {
+     "name": "SOL",
+     "engine": {
+      "type": "SOL"
+     }
+    }
+   },
+   "wallet": {
+    "publicKey": "AuHfKsmAEyRtj9Wtdj2XQyB1L84tHTXifUq1QEsuxejC"
+   }
+  }
+ ]
+}

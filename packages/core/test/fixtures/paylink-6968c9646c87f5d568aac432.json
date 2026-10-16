@@ -1,0 +1,95 @@
+{
+ "id": "6968c9646c87f5d568aac432",
+ "name": "sponsor",
+ "description": "",
+ "template": "PAYLINK_V2",
+ "disabled": false,
+ "inactive": false,
+ "price": "1000000",
+ "dynamic": false,
+ "maxTransactions": 1,
+ "createdAt": "2026-01-15T11:03:00.952Z",
+ "features": {
+  "canChangeQuantity": false,
+  "canChangePrice": false,
+  "requireQuantityLimits": false,
+  "requireCountry": false,
+  "requireEmail": false,
+  "requireDeliveryAddress": false,
+  "requireDiscordUsername": false,
+  "requireDiscordLogin": false,
+  "requireFullName": false,
+  "requirePhoneNumber": false,
+  "requireTwitterUsername": false,
+  "requireTelegramUsername": false,
+  "requireProductDetails": true,
+  "requireAdditionalProductDetails": false,
+  "requireMaxTransactions": false,
+  "requireNftGate": false,
+  "requireDiscordAuth": false,
+  "requireAccessCode": false,
+  "requireXFollow": false,
+  "canSwapTokens": true,
+  "canPayWithCard": true,
+  "requireAllowlist": false,
+  "requireTradingViewUsername": false,
+  "requireAirdrop": false,
+  "requireCaptchaValidation": false
+ },
+ "creator": {
+  "isDisabled": false
+ },
+ "company": {
+  "id": "6968c7b4942d8100514fc2c6",
+  "name": "cabana",
+  "websiteUrl": "cabana.tech",
+  "twitterUsername": null,
+  "twitterConfirmed": false,
+  "kycVerified": false,
+  "kybVerified": false,
+  "isVerified": false
+ },
+ "pricingCurrency": {
+  "id": "6340313846e4f91b8abc519b",
+  "symbol": "USDC",
+  "decimals": 6,
+  "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "currency": {
+  "id": "6340313846e4f91b8abc519b",
+  "symbol": "USDC",
+  "decimals": 6,
+  "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "blockchain": {
+   "name": "SOL",
+   "engine": {
+    "type": "SOL"
+   }
+  }
+ },
+ "recipients": [
+  {
+   "currency": {
+    "id": "6340313846e4f91b8abc519b",
+    "symbol": "USDC",
+    "decimals": 6,
+    "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "blockchain": {
+     "name": "SOL",
+     "engine": {
+      "type": "SOL"
+     }
+    }
+   },
+   "wallet": {
+    "publicKey": "F2zpiFtFevEnTF8cpfP9Lr5BUGm3T91uupcnp7uWqFBt"
+   }
+  }
+ ]
+}
