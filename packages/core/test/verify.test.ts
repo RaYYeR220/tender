@@ -25,8 +25,11 @@ function withPayout(address: string): Product {
   return { ...product(IDS.tipJar), payout: [{ rail: "solana", address }] };
 }
 
-test("verifies payment, sweep and merchant share of a real settlement", async () => {
-  const r = await verifyPayment({ tx: PAYMENT, payer: PAYER, product: withPayout(MERCHANT) }, { fetch: chain() });
+const DEPOSIT = "E38JRTGNg2YcKR7NHQYL5ig3JZGc5QUBvYMVDCKJ3kQ2";
+const bound = async () => DEPOSIT;
+
+test("verifies payment, deposit binding, sweep and merchant share of a real settlement", async () => {
+  const r = await verifyPayment({ tx: PAYMENT, payer: PAYER, product: withPayout(MERCHANT), resolveDeposit: bound }, { fetch: chain() });
   assert.equal(r.status, "settled");
   assert.equal(r.payment.amountUsd, "$3.10");
   assert.equal(r.payment.to, "E38JRTGNg2YcKR7NHQYL5ig3JZGc5QUBvYMVDCKJ3kQ2");
@@ -34,6 +37,30 @@ test("verifies payment, sweep and merchant share of a real settlement", async ()
   assert.equal(r.sweep?.merchant?.amount, "3038000");
   assert.deepEqual(r.sweep?.fees.map((f) => f.amount), ["55800", "6200"]);
   assert.ok(r.checks.every((c) => c.ok === true), JSON.stringify(r.checks));
+  assert.ok(r.checks.some((c) => c.name === "DEPOSIT_BOUND"));
+});
+
+test("merchant paid but deposit binding unconfirmed is not called settled", async () => {
+  const r = await verifyPayment({ tx: PAYMENT, payer: PAYER, product: withPayout(MERCHANT), resolveDeposit: async () => null }, { fetch: chain() });
+  assert.equal(r.status, "swept");
+  assert.equal(r.checks.find((c) => c.name === "DEPOSIT_BOUND")?.ok, null);
+});
+
+test("a payment into someone else's deposit wallet fails the binding", async () => {
+  const r = await verifyPayment(
+    { tx: PAYMENT, payer: PAYER, product: withPayout(MERCHANT), resolveDeposit: async () => "2riiUj78ZtQtKbecrLFb6A4uznGAyWCBcXEh1e5Tto8s" },
+    { fetch: chain() },
+  );
+  assert.equal(r.status, "unverified");
+  assert.equal(r.checks.find((c) => c.name === "DEPOSIT_BOUND")?.ok, false);
+});
+
+test("a fixed price the payment does not cover fails", async () => {
+  const p = withPayout(MERCHANT);
+  const priced = { ...p, pricing: { mode: "fixed" as const, amount: "5000000", currency: p.pricing.currency }, usdcPriced: true };
+  const r = await verifyPayment({ tx: PAYMENT, payer: PAYER, product: priced, resolveDeposit: bound }, { fetch: chain() });
+  assert.equal(r.status, "unverified");
+  assert.equal(r.checks.find((c) => c.name === "COVERS_PRICE")?.ok, false);
 });
 
 test("without the pay link the sweep is shown but not attributed", async () => {

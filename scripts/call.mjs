@@ -3,7 +3,7 @@
 // Usage: node scripts/call.mjs <tool> '<json arguments>'
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const [tool, args = "{}"] = process.argv.slice(2);
 const bundle = fileURLToPath(new URL("../plugin/dist/plugin.mjs", import.meta.url));
@@ -30,7 +30,7 @@ export async function call(name, input, method = "tools/call") {
   throw new Error("plugin exited without a response");
 }
 
-if (tool) {
+if (tool && import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const started = Date.now();
   const message = tool === "list" ? await call(null, null, "tools/list") : await call(tool, JSON.parse(args));
   console.log(JSON.stringify(message.result ?? message.error, null, 2));

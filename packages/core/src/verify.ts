@@ -19,7 +19,7 @@ export interface Transfer {
 }
 
 export interface ReceiptCheck {
-  name: "PAYMENT_CONFIRMED" | "PAID_FROM_PAYER" | "PAID_IN_USDC" | "MERCHANT_PAID" | "AMOUNTS_RECONCILE";
+  name: "PAYMENT_CONFIRMED" | "PAID_FROM_PAYER" | "PAID_IN_USDC" | "COVERS_PRICE" | "DEPOSIT_BOUND" | "MERCHANT_PAID" | "AMOUNTS_RECONCILE";
   ok: boolean | null;
   detail: string;
 }
@@ -68,21 +68,37 @@ interface SolTransferLeg {
   amount: string;
 }
 
+// Token-account address -> mint, for every token account the transaction touched.
+function accountMints(tx: SolTransaction): Map<string, string> {
+  const keys = tx.transaction.message.accountKeys;
+  const mints = new Map<string, string>();
+  for (const balance of [...(tx.meta?.preTokenBalances ?? []), ...(tx.meta?.postTokenBalances ?? [])]) {
+    const account = keys[balance.accountIndex]?.pubkey;
+    if (account) mints.set(account, balance.mint);
+  }
+  return mints;
+}
+
+// USDC movements only: transferChecked must name the USDC mint, and both token
+// accounts of any transfer must be USDC accounts according to the balances.
 function usdcLegs(tx: SolTransaction): SolTransferLeg[] {
   const all = [...tx.transaction.message.instructions, ...(tx.meta?.innerInstructions ?? []).flatMap((group) => group.instructions)];
+  const mints = accountMints(tx);
   const legs: SolTransferLeg[] = [];
   for (const ix of all) {
     const type = ix.parsed?.type;
     const info = ix.parsed?.info ?? {};
     if (ix.program !== "spl-token" || (type !== "transferChecked" && type !== "transfer")) continue;
+    if (typeof info.source !== "string" || typeof info.destination !== "string") continue;
     if (type === "transferChecked" && info.mint !== USDC.solana) continue;
+    if (mints.get(info.source) !== USDC.solana || mints.get(info.destination) !== USDC.solana) continue;
     const amount =
       typeof info.amount === "string"
         ? info.amount
         : typeof (info.tokenAmount as { amount?: unknown } | undefined)?.amount === "string"
-          ? ((info.tokenAmount as { amount: string }).amount)
+          ? (info.tokenAmount as { amount: string }).amount
           : null;
-    if (!amount || typeof info.source !== "string" || typeof info.destination !== "string") continue;
+    if (!amount) continue;
     const authority = typeof info.authority === "string" ? info.authority : typeof info.multisigAuthority === "string" ? info.multisigAuthority : "";
     legs.push({ source: info.source, destination: info.destination, authority, amount });
   }
@@ -114,11 +130,11 @@ function transfer(rail: Rail, tx: string, from: string, to: string, amount: stri
   return { tx, explorer: EXPLORER[rail](tx), from, to, amount, amountUsd: formatUsd(amount), at };
 }
 
-async function verifySolana(signature: string, payer: string, product: Product | null, options: RpcOptions): Promise<Receipt> {
+async function verifySolana(signature: string, payer: string, product: Product | null, options: RpcOptions, resolveDeposit?: DepositResolver): Promise<Receipt> {
   const tx = await solTx(signature, options);
   if (!tx) throw new TenderError("TX_NOT_FOUND", "Solana has no confirmed transaction with that signature yet.");
   const owners = usdcOwners(tx);
-  const leg = usdcLegs(tx).find((l) => l.authority === payer || owners.get(l.source) === payer);
+  const leg = usdcLegs(tx).find((l) => owners.get(l.source) === payer);
   if (!leg) throw new TenderError("NOT_A_PAYMENT", "That transaction moves no USDC out of payer_address.");
   const deposit = owners.get(leg.destination) ?? leg.destination;
   const payment = transfer("solana", signature, payer, deposit, leg.amount, tx.blockTime);
@@ -126,7 +142,7 @@ async function verifySolana(signature: string, payer: string, product: Product |
   const checks: ReceiptCheck[] = [
     { name: "PAYMENT_CONFIRMED", ok: tx.meta?.err == null, detail: tx.meta?.err == null ? "Confirmed on Solana." : "The transaction failed on chain." },
     { name: "PAID_FROM_PAYER", ok: true, detail: `${payment.amountUsd} USDC left ${payer}.` },
-    { name: "PAID_IN_USDC", ok: true, detail: "Asset is native USDC on Solana." },
+    { name: "PAID_IN_USDC", ok: true, detail: "Both token accounts hold native USDC (EPjF…Dt1v)." },
   ];
 
   // The sweep is the next transaction that spends the deposit token account.
@@ -150,7 +166,7 @@ async function verifySolana(signature: string, payer: string, product: Product |
     sweep = { tx: candidate.signature, explorer: EXPLORER.solana(candidate.signature), at: sweepTx.blockTime, merchant, fees: legs.filter((l) => l !== merchant) };
     break;
   }
-  return finish("solana", payment, sweep, checks, product);
+  return finish("solana", payment, sweep, checks, product, resolveDeposit);
 }
 
 const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -161,7 +177,11 @@ interface EvmLog {
   data: string;
   transactionHash: string;
   blockNumber: string;
+  logIndex: string;
 }
+
+// About one hour of Base blocks; MoonPay Commerce sweeps within minutes.
+const SWEEP_WINDOW_BLOCKS = 1800n;
 
 const topicAddress = (topic: string | undefined) => (topic ? `0x${topic.slice(26)}`.toLowerCase() : "");
 const padTopic = (address: string) => `0x${address.slice(2).toLowerCase().padStart(64, "0")}`;
@@ -175,7 +195,7 @@ async function blockTime(blockNumber: string, options: RpcOptions): Promise<numb
   }
 }
 
-async function verifyBase(hash: string, payer: string, product: Product | null, options: RpcOptions): Promise<Receipt> {
+async function verifyBase(hash: string, payer: string, product: Product | null, options: RpcOptions, resolveDeposit?: DepositResolver): Promise<Receipt> {
   const receipt = await rpc<{ status: string; blockNumber: string; logs: EvmLog[] } | null>("base", "eth_getTransactionReceipt", [hash], options);
   if (!receipt) throw new TenderError("TX_NOT_FOUND", "Base has no mined transaction with that hash yet.");
   const usdc = USDC.base.toLowerCase();
@@ -189,27 +209,68 @@ async function verifyBase(hash: string, payer: string, product: Product | null, 
     { name: "PAID_FROM_PAYER", ok: true, detail: `${payment.amountUsd} USDC left ${payer}.` },
     { name: "PAID_IN_USDC", ok: true, detail: "Asset is native USDC on Base." },
   ];
-  const outflows = await rpc<EvmLog[]>(
-    "base",
-    "eth_getLogs",
-    [{ address: USDC.base, topics: [TRANSFER_TOPIC, padTopic(deposit)], fromBlock: receipt.blockNumber, toBlock: "latest" }],
-    options,
-  ).catch(() => [] as EvmLog[]);
+  const paymentBlock = BigInt(log.blockNumber);
+  let outflows: EvmLog[];
+  try {
+    outflows = await rpc<EvmLog[]>(
+      "base",
+      "eth_getLogs",
+      [{ address: USDC.base, topics: [TRANSFER_TOPIC, padTopic(deposit)], fromBlock: log.blockNumber, toBlock: `0x${(paymentBlock + SWEEP_WINDOW_BLOCKS).toString(16)}` }],
+      options,
+    );
+  } catch {
+    throw new TenderError("RPC_UNAVAILABLE", "Base RPC could not list the deposit wallet's transfers. Retry explicitly.");
+  }
+  const after = outflows.filter((l) => {
+    const block = BigInt(l.blockNumber);
+    return block > paymentBlock || (block === paymentBlock && BigInt(l.logIndex) > BigInt(log.logIndex));
+  });
   let sweep: Receipt["sweep"] = null;
-  const first = outflows[0];
+  const first = after[0];
   if (first) {
     const sweepAt = await blockTime(first.blockNumber, options);
     const payouts = new Set((product?.payout ?? []).filter((p) => p.rail === "base").map((p) => p.address.toLowerCase()));
-    const legs = outflows
+    const legs = after
       .filter((l) => l.transactionHash === first.transactionHash)
       .map((l) => transfer("base", l.transactionHash, deposit, topicAddress(l.topics[2]), BigInt(l.data).toString(), sweepAt));
     const merchant = legs.find((l) => payouts.has(l.to)) ?? null;
     sweep = { tx: first.transactionHash, explorer: EXPLORER.base(first.transactionHash), at: sweepAt, merchant, fees: legs.filter((l) => l !== merchant) };
   }
-  return finish("base", payment, sweep, checks, product);
+  return finish("base", payment, sweep, checks, product, resolveDeposit);
 }
 
-function finish(rail: Rail, payment: Transfer, sweep: Receipt["sweep"], checks: ReceiptCheck[], product: Product | null): Receipt {
+export type DepositResolver = (rail: Rail, amountAtomic: string) => Promise<string | null>;
+
+async function finish(
+  rail: Rail,
+  payment: Transfer,
+  sweep: Receipt["sweep"],
+  checks: ReceiptCheck[],
+  product: Product | null,
+  resolveDeposit?: DepositResolver,
+): Promise<Receipt> {
+  if (product?.pricing.mode === "fixed" && product.usdcPriced) {
+    const covers = BigInt(payment.amount) >= BigInt(product.pricing.amount);
+    checks.push({
+      name: "COVERS_PRICE",
+      ok: covers,
+      detail: covers ? `Paid ${payment.amountUsd} against a ${formatUsd(product.pricing.amount)} price.` : `Paid ${payment.amountUsd}, less than the ${formatUsd(product.pricing.amount)} price.`,
+    });
+  }
+  if (resolveDeposit) {
+    const expected = await resolveDeposit(rail, payment.amount).catch(() => null);
+    const same = expected !== null && (rail === "base" ? expected.toLowerCase() === payment.to.toLowerCase() : expected === payment.to);
+    checks.push({
+      name: "DEPOSIT_BOUND",
+      ok: expected === null ? null : same,
+      detail:
+        expected === null
+          ? "MoonPay Commerce did not re-issue this payer's deposit wallet for the pay link, so the binding is unconfirmed."
+          : same
+            ? "The receiving wallet is the deposit wallet MoonPay Commerce assigns this payer for this pay link."
+            : "The receiving wallet is not this payer's deposit wallet for the pay link.",
+    });
+  }
   if (!sweep) {
     checks.push({ name: "MERCHANT_PAID", ok: null, detail: "The deposit wallet has not swept to the merchant yet; MoonPay Commerce sweeps within about two minutes." });
   } else if (sweep.merchant) {
@@ -231,12 +292,16 @@ function finish(rail: Rail, payment: Transfer, sweep: Receipt["sweep"], checks: 
     });
   }
   const failed = checks.some((c) => c.ok === false);
-  const status = failed ? "unverified" : sweep?.merchant ? "settled" : sweep ? "swept" : "awaiting_sweep";
+  const bound = checks.find((c) => c.name === "DEPOSIT_BOUND")?.ok === true;
+  const status = failed ? "unverified" : sweep?.merchant && bound ? "settled" : sweep ? "swept" : "awaiting_sweep";
   return { rail, status, payment, sweep, checks };
 }
 
-export async function verifyPayment(input: { tx: string; payer: string; product: Product | null }, options: RpcOptions = {}): Promise<Receipt> {
-  if (isEvmTxHash(input.tx)) return verifyBase(input.tx, input.payer, input.product, options);
-  if (isSolanaSignature(input.tx)) return verifySolana(input.tx, input.payer, input.product, options);
+export async function verifyPayment(
+  input: { tx: string; payer: string; product: Product | null; resolveDeposit?: DepositResolver },
+  options: RpcOptions = {},
+): Promise<Receipt> {
+  if (isEvmTxHash(input.tx)) return verifyBase(input.tx, input.payer, input.product, options, input.resolveDeposit);
+  if (isSolanaSignature(input.tx)) return verifySolana(input.tx, input.payer, input.product, options, input.resolveDeposit);
   throw new TenderError("INVALID_TX", "tx must be a Solana signature or a 0x Base transaction hash.");
 }

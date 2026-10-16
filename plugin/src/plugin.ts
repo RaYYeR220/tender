@@ -5,6 +5,7 @@ import {
   PAYBOX_CHAIN,
   TenderError,
   checkoutUrl,
+  depositResolver,
   cleanText,
   evaluateCheckout,
   formatUsd,
@@ -17,9 +18,11 @@ import {
   toAtomic,
   usdcBalance,
   verifyPayment,
+  type BlockerCode,
   type CheckoutRef,
   type Decision,
   type Finding,
+  type Policy,
   type Product,
   type Quote,
   type Transfer,
@@ -113,29 +116,33 @@ function failure(error: unknown) {
 interface Gathered {
   ref: CheckoutRef;
   product: Product | null;
+  early: Finding<BlockerCode>[];
   quote: Quote | null;
   balance: string | null;
-  amountAtomic: string | undefined;
 }
 
-// Metadata, the live 402 quote and the payer's USDC balance are independent;
-// fetch them together so a checkout fits the sandbox's 10-second budget.
-async function gather(input: { link: string; payer?: string; amountUsd?: string }): Promise<Gathered> {
+// Pay link metadata comes first: when it already rules the checkout out, Tender
+// refuses without asking MoonPay Commerce for a quote (its x402 endpoints allow
+// ten requests a minute per IP). Otherwise the live quote and the payer's USDC
+// balance are fetched together to stay inside the sandbox's 10-second budget.
+async function gather(input: { link: string; payer?: string; amountUsd?: string; policy: Policy }): Promise<Gathered> {
   const ref = parseCheckoutRef(input.link);
   if (ref.kind === "charge") {
     throw new TenderError("UNSUPPORTED_CHECKOUT", "Charge links are browser checkouts. Ask the merchant for the pay link or an agent invoice.");
   }
-  if (input.payer && !railFromAddress(input.payer)) {
+  const payerRail = input.payer ? railFromAddress(input.payer) : null;
+  if (input.payer && !payerRail) {
     throw new TenderError("INVALID_PAYER", "payer_address must be a Solana address or a 0x Base address.");
   }
   const amountAtomic = input.amountUsd ? toAtomic(input.amountUsd, 6) : undefined;
-  const payerRail = input.payer ? railFromAddress(input.payer) : null;
-  const [product, quote, balance] = await Promise.all([
-    ref.kind === "paylink" ? getPaylink(ref.id) : Promise.resolve(null),
-    input.payer ? getQuote(checkoutUrl(ref, input.payer, amountAtomic)) : Promise.resolve(null),
-    input.payer && payerRail ? usdcBalance(payerRail, input.payer) : Promise.resolve(null),
+  const product = ref.kind === "paylink" ? await getPaylink(ref.id) : null;
+  const early = preflight(product, input.amountUsd, input.policy);
+  if (!input.payer || !payerRail || early.length > 0) return { ref, product, early, quote: null, balance: null };
+  const [quote, balance] = await Promise.all([
+    getQuote(checkoutUrl(ref, input.payer, product?.pricing.mode === "fixed" ? undefined : amountAtomic)),
+    usdcBalance(payerRail, input.payer),
   ]);
-  return { ref, product, quote, balance, amountAtomic };
+  return { ref, product, early, quote, balance };
 }
 
 function createServer() {
@@ -223,21 +230,19 @@ function createServer() {
     },
     async ({ link: input, payer_address, amount_usd, max_usd }) => {
       try {
-        const g = await gather({ link: input, payer: payer_address, amountUsd: amount_usd });
+        const policy: Policy = { maxUsd: max_usd ?? "1000000" };
+        const g = await gather({ link: input, payer: payer_address, amountUsd: amount_usd, policy });
         const product = g.product ? productView(g.product, g.ref) : null;
-        const policy = { maxUsd: max_usd ?? "1000000" };
         let decision: Decision | null = null;
-        let blockers: Finding<string>[] = [];
+        let blockers: Finding<string>[] = g.early;
         let warnings: Finding<string>[] = [];
         if (g.quote && payer_address) {
           decision = evaluateCheckout({ product: g.product, quote: g.quote, payer: payer_address, policy, requestedAmountUsd: amount_usd, balanceAtomic: g.balance });
           blockers = decision.ok ? [] : decision.blockers;
           warnings = decision.warnings;
-        } else {
-          blockers = preflight(g.product, amount_usd, policy);
         }
         const option = decision?.option ?? null;
-        const status = !payer_address ? "needs_payer" : blockers.length ? "blocked" : "ready";
+        const status = blockers.length ? "blocked" : !payer_address ? "needs_payer" : "ready";
         const quote = option ? { rail: option.rail, amount_usd: formatUsd(option.amount), amount_atomic: option.amount, pay_to: option.payTo } : null;
         const balance = g.balance === null ? null : formatUsd(g.balance);
 
@@ -301,16 +306,11 @@ function createServer() {
     },
     async ({ link: input, payer_address, max_usd, amount_usd, rail: forced, require_verified_merchant }) => {
       try {
-        const g = await gather({ link: input, payer: payer_address, amountUsd: amount_usd });
-        if (!g.quote) throw new TenderError("UPSTREAM_UNAVAILABLE", "No live quote.");
-        const decision = evaluateCheckout({
-          product: g.product,
-          quote: g.quote,
-          payer: payer_address,
-          policy: { maxUsd: max_usd, rail: forced, requireVerifiedMerchant: require_verified_merchant },
-          requestedAmountUsd: amount_usd,
-          balanceAtomic: g.balance,
-        });
+        const policy: Policy = { maxUsd: max_usd, rail: forced, requireVerifiedMerchant: require_verified_merchant };
+        const g = await gather({ link: input, payer: payer_address, amountUsd: amount_usd, policy });
+        const decision: Decision = g.quote
+          ? evaluateCheckout({ product: g.product, quote: g.quote, payer: payer_address, policy, requestedAmountUsd: amount_usd, balanceAtomic: g.balance })
+          : { ok: false, blockers: g.early, warnings: [], option: null };
         if (!decision.ok) {
           return {
             isError: true as const,
@@ -319,7 +319,7 @@ function createServer() {
         }
         const proposal = proposeX402({
           chain: PAYBOX_CHAIN[decision.option.rail],
-          url: g.quote.url,
+          url: g.quote!.url,
           method: "POST",
           maxAmount: decision.amountAtomic,
         });
@@ -389,7 +389,8 @@ function createServer() {
         if (!railFromAddress(payer_address)) throw new TenderError("INVALID_PAYER", "payer_address must be a Solana address or a 0x Base address.");
         const ref = input ? parseCheckoutRef(input) : null;
         const product = ref?.kind === "paylink" ? await getPaylink(ref.id) : null;
-        const receipt = await verifyPayment({ tx, payer: payer_address, product });
+        const resolveDeposit = ref && ref.kind !== "charge" ? depositResolver(ref, payer_address, product) : undefined;
+        const receipt = await verifyPayment({ tx, payer: payer_address, product, resolveDeposit });
         const params = new URLSearchParams({ payer: payer_address, ...(ref?.kind === "paylink" ? { link: ref.id } : {}) });
         const receiptUrl = `${SITE_URL}/r/${receipt.rail}/${tx}?${params}`;
         const marks = receipt.checks.map((c) => `${c.ok === true ? "OK" : c.ok === false ? "FAIL" : "PENDING"} ${c.name}: ${c.detail}`).join("\n");

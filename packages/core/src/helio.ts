@@ -1,7 +1,8 @@
 import { TenderError } from "./errors.js";
 import { normalizePaylink, type Product } from "./product.js";
-import { HELIO_API, parseQuote, type Quote } from "./quote.js";
-import { isObjectId } from "./ref.js";
+import type { Rail } from "./chains.js";
+import { HELIO_API, checkoutUrl, parseQuote, type Quote } from "./quote.js";
+import { isObjectId, type CheckoutRef } from "./ref.js";
 
 export type Fetch = typeof fetch;
 
@@ -37,7 +38,10 @@ export async function getPaylink(id: string, options: HelioOptions = {}): Promis
   const response = await call(options, `${HELIO_API}/v1/paylink/${id}/public`, { headers: { Origin: ORIGIN } });
   if (response.status === 404) throw new TenderError("LINK_NOT_FOUND", "No MoonPay Commerce pay link has that id.");
   if (!response.ok) throw new TenderError("UPSTREAM_ERROR", `MoonPay Commerce answered HTTP ${response.status}.`);
-  return normalizePaylink(await response.json());
+  // Unknown ids come back as HTTP 200 with a JSON null body.
+  const body: unknown = await response.json();
+  if (body === null) throw new TenderError("LINK_NOT_FOUND", "No MoonPay Commerce pay link has that id.");
+  return normalizePaylink(body);
 }
 
 export async function getQuote(url: string, options: HelioOptions = {}): Promise<Quote> {
@@ -93,4 +97,14 @@ export async function createCharge(
   const token = pageUrl.split("/").pop() ?? "";
   if (!id || !pageUrl) throw new TenderError("UPSTREAM_INVALID", "Charge response had no id or page URL.");
   return { id, pageUrl, token };
+}
+
+// Re-derives the deposit wallet MoonPay Commerce assigns this payer for this
+// checkout, so a receipt can prove the payment went to the right place.
+export function depositResolver(ref: CheckoutRef, payer: string, product: Product | null, options: HelioOptions = {}) {
+  return async (rail: Rail, amountAtomic: string): Promise<string | null> => {
+    if (ref.kind === "charge") return null;
+    const quote = await getQuote(checkoutUrl(ref, payer, product?.pricing.mode === "fixed" ? undefined : amountAtomic), options);
+    return quote.ok ? (quote.options.find((o) => o.rail === rail)?.payTo ?? null) : null;
+  };
 }
