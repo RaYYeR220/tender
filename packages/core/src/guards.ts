@@ -63,7 +63,12 @@ export function preflight(product: Product | null, requestedAmountUsd: string | 
   if (!policy.maxUsd) {
     blockers.push({ code: "BUDGET_REQUIRED", message: "Tender never proposes a payment without a spending cap.", fix: "Pass max_usd, the most the user agreed to pay." });
   }
-  if (!product) return blockers;
+  if (!product) {
+    if (policy.requireVerifiedMerchant) {
+      blockers.push({ code: "MERCHANT_UNVERIFIED", message: "The merchant behind this checkout cannot be looked up, so it cannot be shown to be verified." });
+    }
+    return blockers;
+  }
   if (product.pricing.mode === "dynamic" && !requestedAmountUsd) {
     blockers.push({ code: "AMOUNT_REQUIRED", message: `${product.name} lets the payer choose the amount.`, fix: "Pass amount_usd." });
   }

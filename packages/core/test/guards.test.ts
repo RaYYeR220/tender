@@ -167,6 +167,17 @@ test("policy can demand a verified merchant", () => {
   assert.deepEqual(codes(d), ["MERCHANT_UNVERIFIED"]);
 });
 
+test("a verified-merchant policy refuses checkouts whose merchant cannot be looked up", () => {
+  const d = evaluateCheckout({
+    product: null,
+    quote: quoteWith([{ rail: "solana", amount: "500000" }]),
+    payer: PAYER_SOL,
+    policy: { maxUsd: "1", requireVerifiedMerchant: true },
+    balanceAtomic: "600000",
+  });
+  assert.deepEqual(codes(d), ["MERCHANT_UNVERIFIED"]);
+});
+
 test("garbage max_usd fails closed", () => {
   const d = evaluateCheckout({ product: null, quote: quoteWith([{ rail: "solana", amount: "1" }]), payer: PAYER_SOL, policy: { maxUsd: "1e9" }, balanceAtomic: "5" });
   assert.deepEqual(codes(d), ["BUDGET_REQUIRED"]);
