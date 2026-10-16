@@ -92,9 +92,9 @@ const bool = (value: unknown): boolean => value === true;
 
 function currency(raw: unknown): Currency | null {
   const c = obj(raw);
-  const symbol = str(c.symbol);
-  const decimals = typeof c.decimals === "number" ? c.decimals : null;
-  const chain = str(obj(c.blockchain).name);
+  const symbol = str(c.symbol) && /^[A-Za-z0-9.$_-]{1,12}$/.test(str(c.symbol)!) ? str(c.symbol) : null;
+  const decimals = typeof c.decimals === "number" && Number.isInteger(c.decimals) && c.decimals >= 0 && c.decimals <= 30 ? c.decimals : null;
+  const chain = str(obj(c.blockchain).name) && /^[A-Za-z0-9_-]{1,24}$/.test(str(obj(c.blockchain).name)!) ? str(obj(c.blockchain).name) : null;
   if (!symbol || decimals === null || !chain) return null;
   return { symbol, decimals, rail: railFromHelioBlockchain(chain), network: chain };
 }
