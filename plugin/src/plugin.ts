@@ -33,6 +33,9 @@ const PROTOCOL_VERSION = "2026-07-28";
 const VERSION = "0.1.0";
 const SITE_URL = (process.env.TENDER_SITE_URL ?? "https://tender-checkout.vercel.app").replace(/\/$/, "");
 const REGISTRY_URL = `${SITE_URL}/registry.json`;
+// Merchant mode: the store owner lists their pay link ids in the PayBox portal.
+const CATALOG = (process.env.TENDER_CATALOG ?? "").split(/[\s,]+/).map((id) => id.toLowerCase()).filter((id) => /^[a-f0-9]{24}$/.test(id));
+const STORE_NAME = process.env.TENDER_STORE_NAME ? cleanText(process.env.TENDER_STORE_NAME, 60) : null;
 
 const link = z.string().min(1).max(512).describe("A MoonPay Commerce pay link URL (moonpay.hel.io/pay/…), deposit link, or 24-character pay link id.");
 const payer = z.string().min(32).max(64).describe("Public address of the PayBox wallet that will pay: a Solana address or a 0x Base address.");
@@ -339,6 +342,61 @@ function createServer() {
           }],
           structuredContent: { order, ...proposal.structuredContent },
         };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "list_catalog",
+    {
+      title: "Browse this store's catalog",
+      description:
+        "Lists the products of the MoonPay Commerce store this Tender install represents (configured by the store owner), with live price, rails and whether each one is payable by agents. Use checkout with a returned link to buy. Read-only.",
+      inputSchema: z.object({}).strict(),
+      outputSchema: z.object({
+        store: z.string().nullable(),
+        products: z.array(z.object({
+          link: z.string(),
+          name: z.string(),
+          merchant: z.string(),
+          pricing: z.string(),
+          rails: z.array(rail),
+          agent_payable: z.boolean(),
+          note: z.string().nullable(),
+        }).strict()),
+      }).strict(),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async () => {
+      try {
+        const ids = CATALOG.slice(0, 12);
+        if (!ids.length) {
+          return {
+            content: [{ type: "text", text: "This install has no store catalog configured. Use find_merchants for the open registry, or pass any MoonPay Commerce pay link to checkout." }],
+            structuredContent: { store: null, products: [] },
+          };
+        }
+        const settled = await Promise.allSettled(ids.map((id) => getPaylink(id)));
+        const products = settled.flatMap((result, i) => {
+          if (result.status !== "fulfilled") return [];
+          const p = result.value;
+          const blocked = [...p.requiredFields.map((f) => `requires ${f}`), ...(p.active ? [] : [p.inactiveReason ?? "inactive"])];
+          return [{
+            link: `https://moonpay.hel.io/pay/${ids[i]}`,
+            name: p.name,
+            merchant: p.merchant.name,
+            pricing: p.pricing.mode === "fixed" ? (p.usdcPriced ? formatUsd(p.pricing.amount) : `priced in ${p.pricing.currency.symbol}`) : "pay what you want",
+            rails: p.rails,
+            agent_payable: blocked.length === 0 && p.rails.length > 0,
+            note: blocked.length ? blocked.join(", ") : null,
+          }];
+        });
+        const text = products
+          .map((p) => `${p.agent_payable ? "•" : "×"} ${quoted(p.name)} — ${p.pricing} on ${p.rails.join("/") || "no PayBox rail"}${p.note ? ` (${p.note})` : ""}: ${p.link}`)
+          .join("\n");
+        return { content: [{ type: "text", text: `${STORE_NAME ?? "Store"} catalog:\n${text}` }], structuredContent: { store: STORE_NAME, products } };
       } catch (error) {
         return failure(error);
       }
