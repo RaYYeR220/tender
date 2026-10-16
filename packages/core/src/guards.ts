@@ -46,6 +46,25 @@ export type Decision =
   | { ok: true; option: QuoteOption; amountAtomic: string; amountUsd: string; warnings: Finding<WarningCode>[] }
   | { ok: false; blockers: Finding<BlockerCode>[]; warnings: Finding<WarningCode>[]; option: QuoteOption | null };
 
+// Upstream error text is never echoed to the agent; each code has a fixed message.
+const QUOTE_MESSAGES: Record<QuoteErrorCode, string> = {
+  LINK_NOT_FOUND: "MoonPay Commerce has no pay link with this id.",
+  LINK_INACTIVE: "The pay link is disabled, deleted or inactive.",
+  MERCHANT_DISABLED: "The merchant's MoonPay Commerce account is disabled.",
+  REQUIRES_CUSTOMER_DETAILS: "The pay link requires customer details, which agent payments cannot provide.",
+  NETWORK_FEES_TOO_HIGH: "Network fees currently exceed the merchant's fee margin on every chain offered.",
+  AMOUNT_TOO_SMALL: "The network fee is larger than the price.",
+  INVALID_AMOUNT: "MoonPay Commerce rejected the amount.",
+  INVALID_PAYER: "MoonPay Commerce rejected the payer address.",
+  SANCTIONED: "MoonPay Commerce restricts this checkout.",
+  PAYER_MISMATCH: "The paying wallet does not match the one this checkout was prepared for.",
+  SETTLEMENT_IN_PROGRESS: "A payment for this checkout is already settling.",
+  RATE_LIMITED: "MoonPay Commerce is rate limiting checkout requests.",
+  UNSUPPORTED_CHECKOUT: "This kind of checkout is not payable by agents.",
+  UPSTREAM_ERROR: "MoonPay Commerce returned an unexpected answer.",
+  UPSTREAM_UNAVAILABLE: "MoonPay Commerce did not answer in time.",
+};
+
 const QUOTE_FIXES: Partial<Record<QuoteErrorCode, string>> = {
   LINK_NOT_FOUND: "Check the link with the merchant; the id does not exist on MoonPay Commerce.",
   LINK_INACTIVE: "The merchant has to re-enable this pay link.",
@@ -70,10 +89,10 @@ export function preflight(product: Product | null, requestedAmountUsd: string | 
     return blockers;
   }
   if (product.pricing.mode === "dynamic" && !requestedAmountUsd) {
-    blockers.push({ code: "AMOUNT_REQUIRED", message: `${product.name} lets the payer choose the amount.`, fix: "Pass amount_usd." });
+    blockers.push({ code: "AMOUNT_REQUIRED", message: "This pay link lets the payer choose the amount.", fix: "Pass amount_usd." });
   }
   if (product.pricing.mode === "fixed" && requestedAmountUsd) {
-    blockers.push({ code: "AMOUNT_NOT_ADJUSTABLE", message: `${product.name} has a fixed price; amount_usd cannot change it.`, fix: "Omit amount_usd." });
+    blockers.push({ code: "AMOUNT_NOT_ADJUSTABLE", message: "This pay link has a fixed price; amount_usd cannot change it.", fix: "Omit amount_usd." });
   }
   if (product.requiredFields.length > 0) {
     blockers.push({
@@ -89,7 +108,7 @@ export function preflight(product: Product | null, requestedAmountUsd: string | 
     blockers.push({ code: "LINK_INACTIVE", message: `This pay link is ${product.inactiveReason}.`, fix: QUOTE_FIXES.LINK_INACTIVE });
   }
   if (policy.requireVerifiedMerchant && !product.merchant.verified) {
-    blockers.push({ code: "MERCHANT_UNVERIFIED", message: `${product.merchant.name} is not a verified MoonPay Commerce merchant.` });
+    blockers.push({ code: "MERCHANT_UNVERIFIED", message: "The merchant is not a verified MoonPay Commerce merchant." });
   }
   return blockers;
 }
@@ -107,7 +126,7 @@ export function evaluateCheckout(input: CheckoutInput): Decision {
   };
 
   if (!quote.ok) {
-    add({ code: quote.code, message: quote.message, fix: QUOTE_FIXES[quote.code] });
+    add({ code: quote.code, message: QUOTE_MESSAGES[quote.code], fix: QUOTE_FIXES[quote.code] });
     return { ok: false, blockers, warnings, option: null };
   }
 
@@ -161,7 +180,7 @@ export function evaluateCheckout(input: CheckoutInput): Decision {
 
   if (product) {
     if (!product.merchant.verified && !policy.requireVerifiedMerchant) {
-      warnings.push({ code: "MERCHANT_UNVERIFIED", message: `${product.merchant.name} has not completed MoonPay Commerce verification.` });
+      warnings.push({ code: "MERCHANT_UNVERIFIED", message: "The merchant has not completed MoonPay Commerce verification." });
     }
     if (!product.usdcPriced) {
       warnings.push({ code: "NOT_USDC_PRICED", message: `Priced in ${product.pricing.currency.symbol}; the quote converts it to USDC at today's rate.` });

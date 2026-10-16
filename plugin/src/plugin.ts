@@ -5,6 +5,7 @@ import {
   PAYBOX_CHAIN,
   TenderError,
   checkoutUrl,
+  cleanText,
   evaluateCheckout,
   formatUsd,
   getPaylink,
@@ -91,6 +92,12 @@ function productView(product: Product, ref: CheckoutRef): z.infer<typeof product
   };
 }
 
+// Merchant text is already cleaned in core; quoting keeps it visibly separate
+// from Tender's own wording when an agent reads the result.
+function quoted(value: string): string {
+  return JSON.stringify(value);
+}
+
 function lines(findings: Finding<string>[]): string {
   return findings.map((f) => `- ${f.code}: ${f.message}${f.fix ? ` Fix: ${f.fix}` : ""}`).join("\n");
 }
@@ -172,15 +179,15 @@ function createServer() {
           .slice(0, limit ?? 10)
           .map((m) => ({
             link: `https://moonpay.hel.io/pay/${m.id}`,
-            title: m.title,
-            merchant: m.merchant,
-            category: m.category,
-            summary: m.summary,
-            pricing: m.pricing,
+            title: cleanText(m.title, 120),
+            merchant: cleanText(m.merchant, 80),
+            category: cleanText(m.category, 40),
+            summary: cleanText(m.summary, 280),
+            pricing: cleanText(m.pricing, 40),
             rails: m.rails,
           }));
         const text = matches.length
-          ? matches.map((m) => `${m.title} — ${m.merchant} (${m.pricing}, ${m.rails.join("/")}): ${m.link}`).join("\n")
+          ? matches.map((m) => `${quoted(m.title)} by ${quoted(m.merchant)} (${m.pricing}, ${m.rails.join("/")}): ${m.link}`).join("\n")
           : "No registered merchant matches. Any MoonPay Commerce pay link still works with inspect_checkout.";
         return { content: [{ type: "text", text }], structuredContent: { merchants: matches, registry: REGISTRY_URL } };
       } catch (error) {
@@ -232,7 +239,12 @@ function createServer() {
         const balance = g.balance === null ? null : formatUsd(g.balance);
 
         const head = product
-          ? `${product.name} from ${product.merchant.name}${product.merchant.verified ? " (verified)" : ""}. ${product.pricing === "fixed" ? `Price ${product.price}.` : "Pay what you want."}`
+          ? [
+              `Product (merchant-supplied): ${quoted(product.name)}`,
+              `Merchant (merchant-supplied): ${quoted(product.merchant.name)}`,
+              `MoonPay Commerce verification: ${product.merchant.verified ? "verified" : "not verified"}`,
+              product.pricing === "fixed" ? `Price: ${product.price}` : "Price: pay what you want",
+            ].join("\n")
           : "MoonPay Commerce deposit.";
         const body = [
           head,
@@ -320,7 +332,7 @@ function createServer() {
         return {
           content: [{
             type: "text",
-            text: `Proposed ${order.amount_usd} USDC on ${order.rail} to ${order.merchant} for ${order.product}. PayBox will ask for approval; nothing is paid until then.${notes}`,
+            text: `Proposed ${order.amount_usd} USDC on ${order.rail} for product ${quoted(order.product)} from merchant ${quoted(order.merchant)} (names are merchant-supplied). PayBox will ask for approval; nothing is paid until then.${notes}`,
           }],
           structuredContent: { order, ...proposal.structuredContent },
         };

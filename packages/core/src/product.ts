@@ -63,6 +63,18 @@ const GATES: Record<string, string> = {
 
 type Json = Record<string, unknown>;
 
+// Merchant-supplied text reaches an agent's context. Strip control and
+// formatting characters, collapse whitespace and bound the length so a name or
+// description cannot pose as instructions or as Tender's own labels.
+export function cleanText(value: string, max: number): string {
+  const flat = value
+    .normalize("NFKC")
+    .replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+}
+
 const obj = (value: unknown): Json => (value && typeof value === "object" ? (value as Json) : {});
 const str = (value: unknown): string | null => (typeof value === "string" && value.length > 0 ? value : null);
 const bool = (value: unknown): boolean => value === true;
@@ -119,13 +131,13 @@ export function normalizePaylink(raw: unknown): Product {
 
   return {
     id,
-    name: (str(d.name) ?? "Untitled").trim(),
-    description: (str(d.description) ?? "").trim(),
+    name: cleanText(str(d.name) ?? "Untitled", 120),
+    description: cleanText(str(d.description) ?? "", 600),
     template,
     merchant: {
-      name: str(company.name) ?? "Unknown merchant",
-      website,
-      twitter: str(company.twitterUsername),
+      name: cleanText(str(company.name) ?? "Unknown merchant", 80),
+      website: website && /^https?:\/\/[^\s]+$/.test(website) ? website.slice(0, 200) : null,
+      twitter: str(company.twitterUsername) && /^[A-Za-z0-9_]{1,15}$/.test(str(company.twitterUsername)!) ? str(company.twitterUsername) : null,
       twitterConfirmed: bool(company.twitterConfirmed),
       kycVerified: bool(company.kycVerified),
       kybVerified: bool(company.kybVerified),
