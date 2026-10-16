@@ -69,10 +69,21 @@ type Json = Record<string, unknown>;
 export function cleanText(value: string, max: number): string {
   const flat = value
     .normalize("NFKC")
-    .replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g, " ")
+    .replace(/[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\u{E0000}-\u{E007F}\u{FE00}-\u{FE0F}\u{E0100}-\u{E01EF}]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+  const chars = [...flat];
+  return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : flat;
+}
+
+function cleanWebsite(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.origin : null;
+  } catch {
+    return null;
+  }
 }
 
 const obj = (value: unknown): Json => (value && typeof value === "object" ? (value as Json) : {});
@@ -136,7 +147,7 @@ export function normalizePaylink(raw: unknown): Product {
     template,
     merchant: {
       name: cleanText(str(company.name) ?? "Unknown merchant", 80),
-      website: website && /^https?:\/\/[^\s]+$/.test(website) ? website.slice(0, 200) : null,
+      website: cleanWebsite(website),
       twitter: str(company.twitterUsername) && /^[A-Za-z0-9_]{1,15}$/.test(str(company.twitterUsername)!) ? str(company.twitterUsername) : null,
       twitterConfirmed: bool(company.twitterConfirmed),
       kycVerified: bool(company.kycVerified),
