@@ -98,7 +98,7 @@ No secrets are needed for buying. Nothing sensitive is ever bundled.
 - MoonPay Commerce's x402 endpoints allow ten requests a minute per IP. Tender asks for a quote only when metadata hasn't already ruled the checkout out.
 - PayBox pays x402 on Solana and Base, so merchants who only take USDC on other chains show up as `RAIL_UNAVAILABLE`.
 - Charge links (single-use browser checkouts, MoonPay Commerce's invoices) are reported as unsupported: its x402 endpoint does not accept them, and paying one would need a deposit-style Solana transfer that Tender does not build yet.
-- MoonPay Commerce sweeps small payments from the deposit wallet to the merchant on its own schedule. Until it does, a receipt reads *awaiting sweep*; Tender never reports a hop it cannot see.
+- MoonPay Commerce sweeps a deposit wallet to the merchant only once it holds at least $3 (its documented `minSweepAmountUsd` minimum). Smaller payments wait in the deposit wallet, and the receipt says so with the current balance; Tender never reports a hop it cannot see. One sweep can carry several payments, and the receipt reconciles it against everything the deposit wallet held.
 - The balance check uses public RPC; if it can't be read, Tender warns and PayBox still checks funds before signing.
 
 ## License

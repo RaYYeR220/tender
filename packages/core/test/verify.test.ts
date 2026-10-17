@@ -11,13 +11,14 @@ const SWEEP = "5cG3qCWiCrhCe2uq3tmKcSMeMfyU82b6GYHiubPDPB2n5sybktSTCnobLZojz8Guy
 const PAYER = "6UphUVdkevZD59y4XX5yJ4gd2kWDLHWDXuY7weYTov3";
 const MERCHANT = "6vZE4CVv3W2J4WP7BjyAJEAS8P3zAB8nqBdoWXhiutD5";
 
-function chain(overrides: { history?: unknown[]; sweep?: unknown } = {}): typeof fetch {
+function chain(overrides: { history?: unknown[]; sweep?: unknown; depositBalance?: string } = {}): typeof fetch {
   return (async (_url: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { method: string; params: unknown[] };
     let result: unknown = null;
     if (body.method === "getTransaction") result = body.params[0] === PAYMENT ? recorded.payment : body.params[0] === SWEEP ? (overrides.sweep ?? recorded.sweep) : null;
     if (body.method === "getSignaturesForAddress") result = overrides.history ?? recorded.history;
     if (body.method === "getTokenAccountsByOwner") result = { value: [{ pubkey: "DYdFdbFtq8TLQYjvwZnVEPrD1mXW73DhwjtpH5utmuNf" }] };
+    if (body.method === "getTokenAccountBalance") result = { value: { amount: overrides.depositBalance ?? "500000" } };
     return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), { headers: { "content-type": "application/json" } });
   }) as typeof fetch;
 }
@@ -116,4 +117,24 @@ test("finds the payment from the payer's deposit wallet when PayBox gives no sig
 test("finds nothing for a payer who never paid into that deposit wallet", async () => {
   const found = await findPayment({ rail: "solana", payer: "7VA3n2q4rxv9rKrVEWJPdoa5pSAS8xku5ECnP6VbbCts", deposit: DEPOSIT }, { fetch: chain() });
   assert.equal(found, null);
+});
+
+test("a payment below MoonPay Commerce's sweep minimum says so", async () => {
+  const r = await verifyPayment({ tx: PAYMENT, payer: PAYER, product: withPayout(MERCHANT), resolveDeposit: bound }, { fetch: chain({ history: [] }) });
+  assert.equal(r.status, "awaiting_sweep");
+  assert.equal(r.depositBalance, "500000");
+  assert.match(r.checks.find((c) => c.name === "MERCHANT_PAID")?.detail ?? "", /\$0\.50, below MoonPay Commerce's \$3\.00 minimum sweep/);
+});
+
+test("the real sweep carried exactly what the deposit wallet held", async () => {
+  const r = await verifyPayment({ tx: PAYMENT, payer: PAYER, product: withPayout(MERCHANT), resolveDeposit: bound }, { fetch: chain() });
+  assert.equal(r.sweep?.held, "3100000");
+});
+
+test("a sweep that pays out less than the deposit wallet held does not reconcile", async () => {
+  const sweep = structuredClone(recorded.sweep) as { meta: { preTokenBalances: { uiTokenAmount: { amount: string }; mint: string; owner?: string }[] } };
+  for (const b of sweep.meta.preTokenBalances) if (b.owner === DEPOSIT) b.uiTokenAmount.amount = "6200000";
+  const r = await verifyPayment({ tx: PAYMENT, payer: PAYER, product: withPayout(MERCHANT), resolveDeposit: bound }, { fetch: chain({ sweep }) });
+  assert.equal(r.status, "unverified");
+  assert.equal(r.checks.find((c) => c.name === "AMOUNTS_RECONCILE")?.ok, false);
 });

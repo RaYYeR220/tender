@@ -16,7 +16,7 @@ An agent in a PayBox-connected chat used the Tender plugin to buy a flat white (
 - Merchant payout wallet listed on the pay link: [`2zTvurq5…6WDEQeQ`](https://solscan.io/account/2zTvurq5MgNL3ZV3kTVCJzhxUwhg8z2J7dQAY6WDEQeQ)
 - Pay link: [moonpay.hel.io/pay/6ad323565c71e316b383ea8a](https://moonpay.hel.io/pay/6ad323565c71e316b383ea8a)
 
-At the time of writing MoonPay Commerce had not yet swept these two small payments from the deposit wallet to the merchant, so their receipts read **awaiting sweep** and `MERCHANT_PAID` is pending. The receipt recomputes from chain on every load and will show the payout when it lands. Tender does not claim a hop it cannot see.
+MoonPay Commerce sweeps a deposit wallet to the merchant only once it holds at least $3 (`minSweepAmountUsd`, documented minimum $3). These two payments put $0.50 in the deposit wallet, so their receipts read **awaiting sweep** and `MERCHANT_PAID` states the balance against that minimum. The receipt recomputes from chain on every load and will show the payout when it lands. Tender does not claim a hop it cannot see.
 
 ## A fully settled receipt
 

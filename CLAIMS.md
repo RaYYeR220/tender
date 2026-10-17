@@ -15,7 +15,7 @@ Every public statement about Tender, tagged by how it can be checked.
 | The order appears in the merchant's MoonPay Commerce dashboard as a successful payment | VERIFIED-LIVE | Transactions view of the Tender Coffee account (shown in the demo video) |
 | The payment went to the deposit wallet MoonPay Commerce assigns this payer for this pay link | VERIFIED-LIVE | `DEPOSIT_BOUND` on both receipts |
 | Tender's receipt follows the sweep to the merchant and reconciles every unit | VERIFIED-LIVE | Settled third-party receipt `euuEheoC…` (3.10 → 3.038 + 0.0558 + 0.0062) |
-| Our own two payments have been swept to the merchant | NOT-CLAIMED | At the time of writing they sat in the deposit wallet; the receipts say *awaiting sweep* |
+| Our own two payments have been swept to the merchant | NOT-CLAIMED | They hold $0.50 in the deposit wallet, below MoonPay Commerce's $3 minimum sweep; the receipts say *awaiting sweep* and show that balance |
 | Payments on Base | MODELED | Base quote, guards and receipt code paths with tests; our demo merchant takes Solana only, so no Base payment was made |
 
 ## Refusals

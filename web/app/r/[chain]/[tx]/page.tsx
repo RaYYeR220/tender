@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
+import { formatUsd } from "@tender/core";
 import type { Product, Receipt, ReceiptCheck, Transfer } from "@tender/core";
 import { Band } from "@/components/Band";
 import { Roll } from "@/components/Roll";
@@ -188,8 +189,10 @@ function Certificate({ receipt, product, payer, linkId, tx, chain }: { receipt: 
       tag: "AWAITING SWEEP",
       tone: "pend",
       mark: <PendMark />,
-      line: "AWAITING SWEEP · USUALLY WITHIN TWO MINUTES",
-      text: "The payment is confirmed and sits in the deposit wallet. MoonPay Commerce usually sweeps it to the merchant within about two minutes; reload to recompute.",
+      line: "AWAITING SWEEP · MOONPAY COMMERCE SWEEPS FROM $3",
+      text: `The payment is confirmed and sits in the deposit wallet. MoonPay Commerce moves a deposit wallet to the merchant once it holds at least $3${
+        receipt.depositBalance ? `; this one holds ${formatUsd(receipt.depositBalance)}` : ""
+      }. Reload to recompute.`,
     },
     unverified: {
       word: "Unverified",

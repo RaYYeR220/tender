@@ -24,11 +24,18 @@ export interface ReceiptCheck {
   detail: string;
 }
 
+// MoonPay Commerce sweeps a deposit wallet only once it holds at least this much
+// (minSweepAmountUsd, whose documented minimum is $3); smaller payments wait.
+export const MIN_SWEEP_ATOMIC = 3_000_000n;
+
 export interface Receipt {
   rail: Rail;
   status: "settled" | "swept" | "awaiting_sweep" | "unverified";
   payment: Transfer;
-  sweep: { tx: string; explorer: string; at: number | null; merchant: Transfer | null; fees: Transfer[] } | null;
+  // `held` is what the deposit wallet held when it was swept: one sweep can carry several payments.
+  sweep: { tx: string; explorer: string; at: number | null; merchant: Transfer | null; fees: Transfer[]; held: string | null } | null;
+  // What the deposit wallet holds now, read when no sweep has been seen yet.
+  depositBalance: string | null;
   checks: ReceiptCheck[];
 }
 
@@ -163,10 +170,25 @@ async function verifySolana(signature: string, payer: string, product: Product |
     const payouts = new Set((product?.payout ?? []).filter((p) => p.rail === "solana").map((p) => p.address));
     const legs = outflows.map((o) => transfer("solana", candidate.signature, deposit, sweepOwners.get(o.destination) ?? o.destination, o.amount, sweepTx.blockTime));
     const merchant = legs.find((l) => payouts.has(l.to)) ?? null;
-    sweep = { tx: candidate.signature, explorer: EXPLORER.solana(candidate.signature), at: sweepTx.blockTime, merchant, fees: legs.filter((l) => l !== merchant) };
+    const keys = sweepTx.transaction.message.accountKeys;
+    const before = (sweepTx.meta?.preTokenBalances ?? []).find((b) => keys[b.accountIndex]?.pubkey === leg.destination);
+    sweep = {
+      tx: candidate.signature,
+      explorer: EXPLORER.solana(candidate.signature),
+      at: sweepTx.blockTime,
+      merchant,
+      fees: legs.filter((l) => l !== merchant),
+      held: before ? before.uiTokenAmount.amount : null,
+    };
     break;
   }
-  return finish("solana", payment, sweep, checks, product, resolveDeposit);
+  let depositBalance: string | null = null;
+  if (!sweep) {
+    depositBalance = await rpc<{ value: { amount: string } }>("solana", "getTokenAccountBalance", [leg.destination, { commitment: "confirmed" }], options)
+      .then((r) => r.value.amount)
+      .catch(() => null);
+  }
+  return finish("solana", payment, sweep, checks, product, resolveDeposit, depositBalance);
 }
 
 const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -234,7 +256,7 @@ async function verifyBase(hash: string, payer: string, product: Product | null, 
       .filter((l) => l.transactionHash === first.transactionHash)
       .map((l) => transfer("base", l.transactionHash, deposit, topicAddress(l.topics[2]), BigInt(l.data).toString(), sweepAt));
     const merchant = legs.find((l) => payouts.has(l.to)) ?? null;
-    sweep = { tx: first.transactionHash, explorer: EXPLORER.base(first.transactionHash), at: sweepAt, merchant, fees: legs.filter((l) => l !== merchant) };
+    sweep = { tx: first.transactionHash, explorer: EXPLORER.base(first.transactionHash), at: sweepAt, merchant, fees: legs.filter((l) => l !== merchant), held: null };
   }
   return finish("base", payment, sweep, checks, product, resolveDeposit);
 }
@@ -248,6 +270,7 @@ async function finish(
   checks: ReceiptCheck[],
   product: Product | null,
   resolveDeposit?: DepositResolver,
+  depositBalance: string | null = null,
 ): Promise<Receipt> {
   if (product?.pricing.mode === "fixed" && product.usdcPriced) {
     const covers = BigInt(payment.amount) >= BigInt(product.pricing.amount);
@@ -272,7 +295,14 @@ async function finish(
     });
   }
   if (!sweep) {
-    checks.push({ name: "MERCHANT_PAID", ok: null, detail: "The deposit wallet has not swept to the merchant yet; MoonPay Commerce sweeps within about two minutes." });
+    const below = depositBalance !== null && BigInt(depositBalance) < MIN_SWEEP_ATOMIC;
+    checks.push({
+      name: "MERCHANT_PAID",
+      ok: null,
+      detail: below
+        ? `The deposit wallet holds ${formatUsd(depositBalance!)}, below MoonPay Commerce's ${formatUsd(MIN_SWEEP_ATOMIC.toString())} minimum sweep; it moves to the merchant once the balance reaches that.`
+        : `The deposit wallet has not swept to the merchant yet; MoonPay Commerce sweeps a deposit wallet once it holds at least ${formatUsd(MIN_SWEEP_ATOMIC.toString())}.`,
+    });
   } else if (sweep.merchant) {
     checks.push({ name: "MERCHANT_PAID", ok: true, detail: `${sweep.merchant.amountUsd} USDC reached the merchant's payout wallet listed on the pay link.` });
   } else if (
@@ -297,17 +327,25 @@ async function finish(
   }
   if (sweep) {
     const out = [sweep.merchant, ...sweep.fees].reduce((sum, t) => sum + (t ? BigInt(t.amount) : 0n), 0n);
-    const reconciles = out === BigInt(payment.amount);
+    const paid = BigInt(payment.amount);
+    // A sweep can carry several payments: it must pay out exactly what the deposit wallet held,
+    // and that balance must include this payment.
+    const held = sweep.held === null ? paid : BigInt(sweep.held);
+    const reconciles = out === held && held >= paid;
     checks.push({
       name: "AMOUNTS_RECONCILE",
       ok: reconciles,
-      detail: reconciles ? `Sweep paid out exactly ${payment.amountUsd}.` : `Sweep paid out ${formatUsd(out.toString())} of ${payment.amountUsd}.`,
+      detail: !reconciles
+        ? `Sweep paid out ${formatUsd(out.toString())} against a deposit balance of ${formatUsd(held.toString())}.`
+        : held === paid
+          ? `Sweep paid out exactly ${payment.amountUsd}.`
+          : `Sweep paid out exactly ${formatUsd(held.toString())}, the deposit wallet's whole balance, which includes this ${payment.amountUsd} payment.`,
     });
   }
   const failed = checks.some((c) => c.ok === false);
   const bound = checks.find((c) => c.name === "DEPOSIT_BOUND")?.ok === true;
   const status = failed ? "unverified" : sweep?.merchant && bound ? "settled" : sweep ? "swept" : "awaiting_sweep";
-  return { rail, status, payment, sweep, checks };
+  return { rail, status, payment, sweep, depositBalance, checks };
 }
 
 export async function verifyPayment(

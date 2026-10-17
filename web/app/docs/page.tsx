@@ -140,7 +140,7 @@ const CHECKS: [string, string, string][] = [
 const STATUSES: [string, "ok" | "pend" | "fail", string][] = [
   ["settled", "ok", "No check fails, the deposit wallet is bound to the pay link, and the merchant's payout wallet was paid."],
   ["swept", "pend", "The deposit wallet swept the money on, but the merchant or the binding can't be confirmed (usually: no pay link given)."],
-  ["awaiting_sweep", "pend", "The payment is confirmed; MoonPay Commerce hasn't swept it yet. It usually does within about two minutes."],
+  ["awaiting_sweep", "pend", "The payment is confirmed; MoonPay Commerce hasn't swept it yet. It sweeps a deposit wallet once it holds at least $3, so a smaller payment waits for the next ones."],
   ["unverified", "fail", "At least one check failed. Not proof of payment."],
 ];
 
