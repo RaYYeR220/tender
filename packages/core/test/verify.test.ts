@@ -82,6 +82,13 @@ test("a merchant paid out on another chain is reported as untraceable, not faile
   assert.equal(r.checks.find((c) => c.name === "MERCHANT_PAID")?.ok, null);
 });
 
+test("cross-chain leniency needs a confirmed deposit binding", async () => {
+  const p = { ...product(IDS.tipJar), payout: [{ rail: "base" as const, address: "0x1111111111111111111111111111111111111111" }] };
+  const r = await verifyPayment({ tx: PAYMENT, payer: PAYER, product: p, resolveDeposit: async () => null }, { fetch: chain() });
+  assert.equal(r.status, "unverified");
+  assert.equal(r.checks.find((c) => c.name === "MERCHANT_PAID")?.ok, false);
+});
+
 test("before the sweep lands the receipt says so instead of guessing", async () => {
   const r = await verifyPayment({ tx: PAYMENT, payer: PAYER, product: withPayout(MERCHANT) }, { fetch: chain({ history: [] }) });
   assert.equal(r.status, "awaiting_sweep");
