@@ -3,6 +3,8 @@
    scoped by a .pg-* wrapper so they never collide across client navigations. */
 
 :root {
+  /* The design is a printed document; opt out of forced dark modes. */
+  color-scheme: only light;
   --cotton-0: #f6f3ea; --cotton-1: #efece2; --cotton-2: #e4e0d2; --tint: #dfe6dc;
   --i900: #14231c; --i700: #1f3a2f; --i500: #2f5d4a; --i300: #7f9a8c; --i100: #c9d5cc;
   --ink: #33463c; --muted: #55695e;
