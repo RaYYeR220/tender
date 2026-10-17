@@ -9,10 +9,6 @@ export type Fetch = typeof fetch;
 export interface HelioOptions {
   fetch?: Fetch;
   timeoutMs?: number;
-  // Merchant mode: the public API key goes in the query string. The secret
-  // never passes through this code; PayBox (or the web server) adds the
-  // Authorization header for api.hel.io on the way out.
-  publicKey?: string;
   authorization?: string;
 }
 
