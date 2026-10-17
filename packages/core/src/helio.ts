@@ -60,45 +60,6 @@ export async function getQuote(url: string, options: HelioOptions = {}): Promise
   return parseQuote(url, response.status, response.headers.get("payment-required"), await response.text());
 }
 
-function merchantUrl(path: string, options: HelioOptions): string {
-  if (!options.publicKey) throw new TenderError("MERCHANT_MODE_OFF", "This Tender install has no merchant account configured.");
-  const url = new URL(path, HELIO_API);
-  url.searchParams.set("apiKey", options.publicKey);
-  return url.toString();
-}
-
-export interface Charge {
-  id: string;
-  pageUrl: string;
-  token: string;
-}
-
-export async function createCharge(
-  input: { paylinkId: string; amountAtomic?: string; memo?: string; expiresAt?: string },
-  options: HelioOptions,
-): Promise<Charge> {
-  if (!isObjectId(input.paylinkId)) throw new TenderError("INVALID_REFERENCE", "Pay link ids are 24 hex characters.");
-  const body: Record<string, unknown> = { paymentRequestId: input.paylinkId };
-  if (input.amountAtomic) body.requestAmount = input.amountAtomic;
-  if (input.expiresAt) body.expiresAt = input.expiresAt;
-  if (input.memo) body.prepareRequestBody = { customerDetails: { additionalJSON: JSON.stringify({ memo: input.memo }) } };
-  const response = await call(options, merchantUrl("/v1/charge/api-key", options), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (response.status === 401 || response.status === 403) {
-    throw new TenderError("MERCHANT_AUTH", "MoonPay Commerce rejected the merchant credentials for this install.");
-  }
-  if (!response.ok) throw new TenderError("UPSTREAM_ERROR", `Charge creation failed with HTTP ${response.status}.`);
-  const data = (await response.json()) as Record<string, unknown>;
-  const id = typeof data.id === "string" ? data.id : "";
-  const pageUrl = typeof data.pageUrl === "string" ? data.pageUrl : "";
-  const token = pageUrl.split("/").pop() ?? "";
-  if (!id || !pageUrl) throw new TenderError("UPSTREAM_INVALID", "Charge response had no id or page URL.");
-  return { id, pageUrl, token };
-}
-
 // Re-derives the deposit wallet MoonPay Commerce assigns this payer for this
 // checkout, so a receipt can prove the payment went to the right place.
 export function depositResolver(ref: CheckoutRef, payer: string, product: Product | null, options: HelioOptions = {}) {
