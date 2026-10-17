@@ -40,6 +40,7 @@ function outcome(message) {
   const r = message.result;
   const proposal = r?.structuredContent?.["io.paybox/transactionProposal"];
   if (proposal) return { kind: "proposal", detail: `${proposal.payment.maxAmount} atomic USDC on ${proposal.chain}` };
+  if (r?.structuredContent?.status === "refused") return { kind: r.structuredContent.blockers.map((b) => b.code).join(","), detail: r.content?.[0]?.text?.split("\n")[1] ?? "" };
   if (r?.structuredContent?.status) return { kind: r.structuredContent.status, detail: (r.structuredContent.blockers ?? []).map((b) => b.code).join(",") };
   const text = r?.content?.[0]?.text ?? "";
   if (r?.isError && /^Input validation error|Invalid arguments|validation/i.test(text)) return { kind: "schema", detail: text.slice(0, 80) };

@@ -111,9 +111,19 @@ function lines(findings: Finding<string>[]): string {
   return findings.map((f) => `- ${f.code}: ${f.message}${f.fix ? ` Fix: ${f.fix}` : ""}`).join("\n");
 }
 
-function failure(error: unknown) {
-  const message = error instanceof TenderError ? `${error.code}: ${error.message}` : "Tender could not complete this request. Retry explicitly.";
-  return { isError: true as const, content: [{ type: "text" as const, text: message }] };
+// PayBox rejects results that omit the declared structured output, so every
+// outcome, refusals and errors included, comes back as structured data.
+function problem(error: unknown): Finding<string> {
+  return error instanceof TenderError
+    ? { code: error.code, message: error.message }
+    : { code: "UNAVAILABLE", message: "Tender could not complete this request. Retry explicitly." };
+}
+
+function refused(blockers: Finding<string>[], warnings: Finding<string>[] = []) {
+  return {
+    content: [{ type: "text" as const, text: `Refused. No payment was proposed and nothing reaches PayBox to sign.\n${lines(blockers)}` }],
+    structuredContent: { status: "refused" as const, blockers, warnings },
+  };
 }
 
 interface Gathered {
@@ -175,6 +185,7 @@ function createServer() {
           rails: z.array(rail),
         }).strict()),
         registry: z.string(),
+        notice: z.string().nullable(),
       }).strict(),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
@@ -202,9 +213,10 @@ function createServer() {
         const text = matches.length
           ? matches.map((m) => `${quoted(m.title)} by ${quoted(m.merchant)} (${m.pricing}, ${m.rails.join("/")}): ${m.link}`).join("\n")
           : "No registered merchant matches. Any MoonPay Commerce pay link still works with inspect_checkout.";
-        return { content: [{ type: "text", text }], structuredContent: { merchants: matches, registry: REGISTRY_URL } };
+        return { content: [{ type: "text", text }], structuredContent: { merchants: matches, registry: REGISTRY_URL, notice: null } };
       } catch (error) {
-        return failure(error);
+        const p = problem(error);
+        return { content: [{ type: "text", text: `${p.code}: ${p.message}` }], structuredContent: { merchants: [], registry: REGISTRY_URL, notice: `${p.code}: ${p.message}` } };
       }
     },
   );
@@ -268,7 +280,11 @@ function createServer() {
         ].filter(Boolean).join("\n");
         return { content: [{ type: "text", text: body }], structuredContent: { status, product, quote, balance_usd: balance, blockers, warnings } };
       } catch (error) {
-        return failure(error);
+        const p = problem(error);
+        return {
+          content: [{ type: "text", text: `Would be refused:\n${lines([p])}` }],
+          structuredContent: { status: "blocked" as const, product: null, quote: null, balance_usd: null, blockers: [p], warnings: [] },
+        };
       }
     },
   );
@@ -288,6 +304,9 @@ function createServer() {
         require_verified_merchant: z.boolean().optional().describe("Refuse merchants that have not completed MoonPay Commerce verification."),
       }).strict(),
       outputSchema: z.object({
+        status: z.enum(["proposed", "refused"]),
+        blockers: z.array(finding),
+        warnings: z.array(finding),
         order: z.object({
           product: z.string(),
           merchant: z.string(),
@@ -295,7 +314,7 @@ function createServer() {
           rail,
           pay_to: z.string(),
           link: z.string(),
-        }).strict(),
+        }).strict().optional(),
         "io.paybox/transactionProposal": z.object({
           version: z.literal("1"),
           kind: z.literal("x402"),
@@ -303,7 +322,7 @@ function createServer() {
           chain: z.enum(["eip155:8453", "solana:mainnet"]),
           request: z.object({ url: z.string(), method: z.enum(["GET", "POST"]), body: z.json().optional() }).strict(),
           payment: z.object({ asset: z.string(), maxAmount: z.string() }).strict(),
-        }).strict(),
+        }).strict().optional(),
       }).strict(),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
     },
@@ -314,12 +333,7 @@ function createServer() {
         const decision: Decision = g.quote
           ? evaluateCheckout({ product: g.product, quote: g.quote, payer: payer_address, policy, requestedAmountUsd: amount_usd, balanceAtomic: g.balance })
           : { ok: false, blockers: g.early, warnings: [], option: null };
-        if (!decision.ok) {
-          return {
-            isError: true as const,
-            content: [{ type: "text" as const, text: `Refused. No payment was proposed.\n${lines(decision.blockers)}` }],
-          };
-        }
+        if (!decision.ok) return refused(decision.blockers, decision.warnings);
         const proposal = proposeX402({
           chain: PAYBOX_CHAIN[decision.option.rail],
           url: g.quote!.url,
@@ -340,10 +354,10 @@ function createServer() {
             type: "text",
             text: `Proposed ${order.amount_usd} USDC on ${order.rail} for product ${quoted(order.product)} from merchant ${quoted(order.merchant)} (names are merchant-supplied). PayBox will ask for approval; nothing is paid until then.${notes}`,
           }],
-          structuredContent: { order, ...proposal.structuredContent },
+          structuredContent: { status: "proposed" as const, blockers: [], warnings: decision.warnings, order, ...proposal.structuredContent },
         };
       } catch (error) {
-        return failure(error);
+        return refused([problem(error)]);
       }
     },
   );
@@ -357,6 +371,7 @@ function createServer() {
       inputSchema: z.object({}).strict(),
       outputSchema: z.object({
         store: z.string().nullable(),
+        notice: z.string().nullable(),
         products: z.array(z.object({
           link: z.string(),
           name: z.string(),
@@ -375,7 +390,7 @@ function createServer() {
         if (!ids.length) {
           return {
             content: [{ type: "text", text: "This install has no store catalog configured. Use find_merchants for the open registry, or pass any MoonPay Commerce pay link to checkout." }],
-            structuredContent: { store: null, products: [] },
+            structuredContent: { store: null, notice: "No store catalog configured.", products: [] },
           };
         }
         const settled = await Promise.allSettled(ids.map((id) => getPaylink(id)));
@@ -396,9 +411,10 @@ function createServer() {
         const text = products
           .map((p) => `${p.agent_payable ? "•" : "×"} ${quoted(p.name)} — ${p.pricing} on ${p.rails.join("/") || "no PayBox rail"}${p.note ? ` (${p.note})` : ""}: ${p.link}`)
           .join("\n");
-        return { content: [{ type: "text", text: `${STORE_NAME ?? "Store"} catalog:\n${text}` }], structuredContent: { store: STORE_NAME, products } };
+        return { content: [{ type: "text", text: `${STORE_NAME ?? "Store"} catalog:\n${text}` }], structuredContent: { store: STORE_NAME, notice: null, products } };
       } catch (error) {
-        return failure(error);
+        const p = problem(error);
+        return { content: [{ type: "text", text: `${p.code}: ${p.message}` }], structuredContent: { store: STORE_NAME, notice: `${p.code}: ${p.message}`, products: [] } };
       }
     },
   );
@@ -432,13 +448,14 @@ function createServer() {
         link: link.optional().describe("The pay link that was paid; needed to attribute the sweep to the merchant."),
       }).strict(),
       outputSchema: z.object({
-        status: z.enum(["settled", "swept", "awaiting_sweep", "unverified"]),
-        rail,
-        payment: transferShape,
+        status: z.enum(["settled", "swept", "awaiting_sweep", "unverified", "not_verifiable"]),
+        rail: rail.nullable(),
+        payment: transferShape.nullable(),
         merchant_received: transferShape.nullable(),
         fees: z.array(transferShape),
         checks: z.array(z.object({ name: z.string(), ok: z.boolean().nullable(), detail: z.string() }).strict()),
-        receipt_url: z.string(),
+        receipt_url: z.string().nullable(),
+        error: finding.nullable(),
       }).strict(),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
@@ -468,10 +485,15 @@ function createServer() {
             fees: (receipt.sweep?.fees ?? []).map(view),
             checks: receipt.checks,
             receipt_url: receiptUrl,
+            error: null,
           },
         };
       } catch (error) {
-        return failure(error);
+        const p = problem(error);
+        return {
+          content: [{ type: "text", text: `Not verifiable: ${p.code}: ${p.message}` }],
+          structuredContent: { status: "not_verifiable" as const, rail: null, payment: null, merchant_received: null, fees: [], checks: [], receipt_url: null, error: p },
+        };
       }
     },
   );
