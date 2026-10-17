@@ -6,6 +6,7 @@ Tender is a [PayBox](https://paybox.sh) plugin. It lets an AI agent buy from any
 
 - Live site and registry: https://tender-checkout.vercel.app
 - A real purchase an agent made through PayBox with Tender: [receipt](https://tender-checkout.vercel.app/r/solana/3d4KqBCBXb8aWiwJRakGDuiX47VT7eFWcLB1HkTi6U94Qka4P6cvD2zN99ZCKspQxkFG45eDfRRdTBFdWMjNrFL9?payer=7VA3n2q4rxv9rKrVEWJPdoa5pSAS8xku5ECnP6VbbCts&link=6ad323565c71e316b383ea8a) · [Solscan](https://solscan.io/tx/3d4KqBCBXb8aWiwJRakGDuiX47VT7eFWcLB1HkTi6U94Qka4P6cvD2zN99ZCKspQxkFG45eDfRRdTBFdWMjNrFL9)
+- Demo video (2:31): [on X](https://x.com/BazydloMis57623/status/2111551638422905209)
 - Reviewing? Start with [JUDGES.md](JUDGES.md). Every claim and its evidence: [CLAIMS.md](CLAIMS.md) · [PROOF.md](PROOF.md)
 - Plugin source: [`plugin/`](plugin) · shared checkout core: [`packages/core/`](packages/core) · site: [`web/`](web)
 
