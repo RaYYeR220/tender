@@ -33,7 +33,7 @@ Every public statement about Tender, tagged by how it can be checked.
 - **22 / 22** scenarios ended as expected.
 - **0** proposals where a refusal was due.
 - **17 / 17** refusals held: over the cap by one cent, cap far below price, more than the wallet holds, required customer fields, missing amount, amount on a fixed price, Base payer on a Solana-only checkout, rail forced against the payer, unverified merchant under a strict policy, amount below the network fee floor, unknown pay link, foreign host, path traversal, malformed payer, charge link, missing cap (schema), and a blocked dry run.
-- 5 scenarios that should succeed produced a proposal for the exact quoted amount (including exactly at the cap, and a verified merchant under a strict policy).
+- The 4 scenarios that should succeed produced a proposal for the exact quoted amount (including exactly at the cap, and a verified merchant under a strict policy), and the dry run reported ready.
 - In an earlier run one scenario hit a network timeout to MoonPay Commerce and came back as `UPSTREAM_UNAVAILABLE`: a refusal, not a payment. Tender fails closed when the merchant cannot be reached.
 
 ## Engineering
