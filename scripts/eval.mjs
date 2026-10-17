@@ -5,9 +5,10 @@ import { call } from "./call.mjs";
 
 const SOL = "7VA3n2q4rxv9rKrVEWJPdoa5pSAS8xku5ECnP6VbbCts";
 const EVM = "0xb391F395d54dbfCe10ac75C321F97Cdc348aB8c3";
-const TIP = "695cb05415de374626355640";
-const FIELDS = "6aca53da3f07606bfe526138";
-const FIXED = "6968c9646c87f5d568aac432";
+const TIP = "6ad323579a3d621ed01812b8";
+const FIELDS = "6ad323588eb58f1259a0ae16";
+const FIXED = "6ad323565c71e316b383ea8a";
+const UNVERIFIED = "695cb05415de374626355640";
 
 const scenarios = [
   { name: "pay-what-you-want within cap", tool: "checkout", args: { link: TIP, payer_address: SOL, max_usd: "0.50", amount_usd: "0.25" }, expect: "proposal" },
@@ -21,7 +22,8 @@ const scenarios = [
   { name: "fixed price with an amount", tool: "checkout", args: { link: FIXED, payer_address: SOL, max_usd: "5", amount_usd: "0.10" }, expect: "AMOUNT_NOT_ADJUSTABLE" },
   { name: "Base wallet on a Solana-only checkout", tool: "checkout", args: { link: TIP, payer_address: EVM, max_usd: "1", amount_usd: "0.25" }, expect: "RAIL_UNAVAILABLE" },
   { name: "forced rail disagrees with payer", tool: "checkout", args: { link: TIP, payer_address: SOL, max_usd: "1", amount_usd: "0.25", rail: "base" }, expect: "RAIL_UNAVAILABLE|INVALID_PAYER" },
-  { name: "unverified merchant under strict policy", tool: "checkout", args: { link: TIP, payer_address: SOL, max_usd: "1", amount_usd: "0.25", require_verified_merchant: true }, expect: "MERCHANT_UNVERIFIED" },
+  { name: "verified merchant passes strict policy", tool: "checkout", args: { link: FIXED, payer_address: SOL, max_usd: "0.50", require_verified_merchant: true }, expect: "proposal" },
+  { name: "unverified merchant under strict policy", tool: "checkout", args: { link: UNVERIFIED, payer_address: SOL, max_usd: "1", amount_usd: "0.25", require_verified_merchant: true }, expect: "MERCHANT_UNVERIFIED" },
   { name: "amount below network fee floor", tool: "checkout", args: { link: TIP, payer_address: SOL, max_usd: "1", amount_usd: "0.01" }, expect: "NETWORK_FEES_TOO_HIGH|AMOUNT_TOO_SMALL" },
   { name: "unknown pay link", tool: "checkout", args: { link: "0123456789abcdef01234567", payer_address: SOL, max_usd: "1" }, expect: "LINK_NOT_FOUND" },
   { name: "foreign host", offline: true, tool: "checkout", args: { link: `https://evil.example/pay/${TIP}`, payer_address: SOL, max_usd: "1", amount_usd: "0.25" }, expect: "INVALID_REFERENCE" },

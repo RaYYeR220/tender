@@ -1,5 +1,28 @@
 {
   "version": 1,
   "updated": "2026-10-17",
-  "merchants": []
+  "merchants": [
+    {
+      "id": "6ad323565c71e316b383ea8a",
+      "title": "Flat white",
+      "merchant": "Tender Coffee",
+      "category": "food & drink",
+      "summary": "A flat white from the Tender demo counter. No forms; paid in USDC.",
+      "pricing": "$0.25",
+      "rails": ["solana"],
+      "tags": ["coffee", "demo", "fixed price"],
+      "added": "2026-10-17"
+    },
+    {
+      "id": "6ad323579a3d621ed01812b8",
+      "title": "Tip jar",
+      "merchant": "Tender Coffee",
+      "category": "tips",
+      "summary": "Pay what you want, from $0.10. The agent picks the amount within its budget.",
+      "pricing": "pay what you want",
+      "rails": ["solana"],
+      "tags": ["tips", "demo", "dynamic price"],
+      "added": "2026-10-17"
+    }
+  ]
 }
