@@ -275,6 +275,14 @@ async function finish(
     checks.push({ name: "MERCHANT_PAID", ok: null, detail: "The deposit wallet has not swept to the merchant yet; MoonPay Commerce sweeps within about two minutes." });
   } else if (sweep.merchant) {
     checks.push({ name: "MERCHANT_PAID", ok: true, detail: `${sweep.merchant.amountUsd} USDC reached the merchant's payout wallet listed on the pay link.` });
+  } else if (product && !product.payout.some((p) => p.rail === rail)) {
+    // The merchant is paid out on another chain; MoonPay Commerce converts the
+    // funds, so the final hop cannot be traced from this chain's data.
+    checks.push({
+      name: "MERCHANT_PAID",
+      ok: null,
+      detail: `The merchant settles to ${product.payout.map((p) => p.rail).join(" or ") || "another chain"}; the converted payout is not traceable from ${rail} data.`,
+    });
   } else {
     checks.push({
       name: "MERCHANT_PAID",
