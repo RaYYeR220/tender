@@ -45,6 +45,8 @@ export const metadata: Metadata = {
     title,
     description,
   },
+  // The page is designed as a light printed document; ask Dark Reader not to invert it.
+  other: { "darkreader-lock": "" },
 };
 
 export const viewport: Viewport = {
