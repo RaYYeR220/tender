@@ -318,3 +318,45 @@ export async function verifyPayment(
   if (isSolanaSignature(input.tx)) return verifySolana(input.tx, input.payer, input.product, options, input.resolveDeposit);
   throw new TenderError("INVALID_TX", "tx must be a Solana signature or a 0x Base transaction hash.");
 }
+
+// PayBox completes x402 payments through a gateway and does not hand the agent
+// a transaction signature. Given the deposit wallet MoonPay Commerce assigns
+// this payer for the pay link, the latest payment can be found on chain.
+export async function findPayment(input: { rail: Rail; payer: string; deposit: string }, options: RpcOptions = {}): Promise<string | null> {
+  if (input.rail === "solana") {
+    const accounts = await rpc<{ value: { pubkey: string }[] }>(
+      "solana",
+      "getTokenAccountsByOwner",
+      [input.deposit, { mint: USDC.solana }, { encoding: "jsonParsed", commitment: "confirmed" }],
+      options,
+    );
+    for (const account of accounts.value.slice(0, 2)) {
+      const history = await rpc<{ signature: string; err: unknown }[]>(
+        "solana",
+        "getSignaturesForAddress",
+        [account.pubkey, { limit: 8, commitment: "confirmed" }],
+        options,
+      );
+      for (const entry of history.filter((h) => h.err == null).slice(0, 4)) {
+        const tx = await solTx(entry.signature, options);
+        if (!tx) continue;
+        const owners = usdcOwners(tx);
+        if (usdcLegs(tx).some((l) => l.destination === account.pubkey && owners.get(l.source) === input.payer)) return entry.signature;
+      }
+    }
+    return null;
+  }
+  const head = BigInt(await rpc<string>("base", "eth_blockNumber", [], options));
+  const logs = await rpc<EvmLog[]>(
+    "base",
+    "eth_getLogs",
+    [{
+      address: USDC.base,
+      topics: [TRANSFER_TOPIC, padTopic(input.payer), padTopic(input.deposit)],
+      fromBlock: `0x${(head > 9000n ? head - 9000n : 0n).toString(16)}`,
+      toBlock: "latest",
+    }],
+    options,
+  );
+  return logs.at(-1)?.transactionHash ?? null;
+}

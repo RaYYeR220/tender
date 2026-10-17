@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { verifyPayment } from "../src/verify.js";
+import { findPayment, verifyPayment } from "../src/verify.js";
 import type { Product } from "../src/product.js";
 import { fixture, IDS, product } from "./helpers.js";
 
@@ -17,6 +17,7 @@ function chain(overrides: { history?: unknown[]; sweep?: unknown } = {}): typeof
     let result: unknown = null;
     if (body.method === "getTransaction") result = body.params[0] === PAYMENT ? recorded.payment : body.params[0] === SWEEP ? (overrides.sweep ?? recorded.sweep) : null;
     if (body.method === "getSignaturesForAddress") result = overrides.history ?? recorded.history;
+    if (body.method === "getTokenAccountsByOwner") result = { value: [{ pubkey: "DYdFdbFtq8TLQYjvwZnVEPrD1mXW73DhwjtpH5utmuNf" }] };
     return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), { headers: { "content-type": "application/json" } });
   }) as typeof fetch;
 }
@@ -105,4 +106,14 @@ test("a transaction that is not from the payer is rejected", async () => {
 
 test("garbage transaction ids never reach the network", async () => {
   await assert.rejects(verifyPayment({ tx: "hello", payer: PAYER, product: null }, { fetch: chain() }), /INVALID_TX|Solana signature/);
+});
+
+test("finds the payment from the payer's deposit wallet when PayBox gives no signature", async () => {
+  const found = await findPayment({ rail: "solana", payer: PAYER, deposit: DEPOSIT }, { fetch: chain() });
+  assert.equal(found, PAYMENT);
+});
+
+test("finds nothing for a payer who never paid into that deposit wallet", async () => {
+  const found = await findPayment({ rail: "solana", payer: "7VA3n2q4rxv9rKrVEWJPdoa5pSAS8xku5ECnP6VbbCts", deposit: DEPOSIT }, { fetch: chain() });
+  assert.equal(found, null);
 });

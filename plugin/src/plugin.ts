@@ -6,6 +6,7 @@ import {
   TenderError,
   checkoutUrl,
   depositResolver,
+  findPayment,
   cleanText,
   evaluateCheckout,
   formatUsd,
@@ -294,7 +295,7 @@ function createServer() {
     {
       title: "Pay a MoonPay Commerce checkout",
       description:
-        "Proposes paying a MoonPay Commerce pay link or deposit in USDC on Solana or Base through PayBox's x402 flow. Tender re-fetches the live quote and refuses, with no proposal, if the total including fees exceeds max_usd, the link needs customer details, the merchant or link is inactive, the payer's chain is not offered, or the payer lacks USDC. On success PayBox shows the payment for approval, pays the merchant and returns the merchant's response; poll the PayBox request until it is terminal and never call checkout again to finish it.",
+        "Proposes paying a MoonPay Commerce pay link or deposit in USDC on Solana or Base through PayBox's x402 flow. Tender re-fetches the live quote and refuses, with no proposal, if the total including fees exceeds max_usd, the link needs customer details, the merchant or link is inactive, the payer's chain is not offered, or the payer lacks USDC. On success PayBox shows the payment for approval, pays the merchant and returns the merchant's response; poll the PayBox request until it is terminal and never call checkout again to finish it. Afterwards call verify_purchase with the same link and payer_address for an on-chain receipt.",
       inputSchema: z.object({
         link,
         payer_address: payer,
@@ -352,7 +353,7 @@ function createServer() {
         return {
           content: [{
             type: "text",
-            text: `Proposed ${order.amount_usd} USDC on ${order.rail} for product ${quoted(order.product)} from merchant ${quoted(order.merchant)} (names are merchant-supplied). PayBox will ask for approval; nothing is paid until then.${notes}`,
+            text: `Proposed ${order.amount_usd} USDC on ${order.rail} for product ${quoted(order.product)} from merchant ${quoted(order.merchant)} (names are merchant-supplied). PayBox will ask for approval; nothing is paid until then. When the PayBox request succeeds, call verify_purchase with this link and payer_address for the on-chain receipt.${notes}`,
           }],
           structuredContent: { status: "proposed" as const, blockers: [], warnings: decision.warnings, order, ...proposal.structuredContent },
         };
@@ -441,11 +442,11 @@ function createServer() {
     {
       title: "Verify a MoonPay Commerce payment on-chain",
       description:
-        "Builds a receipt from chain data alone: confirms the USDC payment left payer_address, follows MoonPay Commerce's deposit wallet to the sweep, and with the pay link checks that the merchant's listed payout wallet received its share and that every unit is accounted for. Use the payment transaction from the finished PayBox request. Read-only.",
+        "Builds a receipt from chain data alone: confirms the USDC payment left payer_address, follows MoonPay Commerce's deposit wallet to the sweep, and with the pay link checks that the merchant's listed payout wallet received its share and that every unit is accounted for. PayBox does not return a transaction signature for x402 payments, so pass the pay link and payer_address and Tender finds the latest payment itself; pass tx only to verify a specific one. Read-only.",
       inputSchema: z.object({
-        tx: z.string().min(64).max(90).describe("Payment transaction: a Solana signature or a 0x Base transaction hash."),
+        link: link.optional().describe("The pay link that was paid. Required when tx is omitted; also attributes the sweep to the merchant."),
         payer_address: payer,
-        link: link.optional().describe("The pay link that was paid; needed to attribute the sweep to the merchant."),
+        tx: z.string().min(64).max(90).optional().describe("Optional payment transaction: a Solana signature or a 0x Base transaction hash."),
       }).strict(),
       outputSchema: z.object({
         status: z.enum(["settled", "swept", "awaiting_sweep", "unverified", "not_verifiable"]),
@@ -464,10 +465,21 @@ function createServer() {
         if (!railFromAddress(payer_address)) throw new TenderError("INVALID_PAYER", "payer_address must be a Solana address or a 0x Base address.");
         const ref = input ? parseCheckoutRef(input) : null;
         const product = ref?.kind === "paylink" ? await getPaylink(ref.id) : null;
-        const resolveDeposit = ref && ref.kind !== "charge" ? depositResolver(ref, payer_address, product) : undefined;
-        const receipt = await verifyPayment({ tx, payer: payer_address, product, resolveDeposit });
+        const payerRail = railFromAddress(payer_address)!;
+        let resolveDeposit = ref && ref.kind !== "charge" ? depositResolver(ref, payer_address, product) : undefined;
+        let paymentTx = tx;
+        if (!paymentTx) {
+          if (!resolveDeposit) throw new TenderError("LINK_REQUIRED", "Pass the pay link that was paid, or the payment transaction.");
+          const probeAmount = product?.pricing.mode === "fixed" ? product.pricing.amount : "1000000";
+          const deposit = await resolveDeposit(payerRail, probeAmount);
+          if (!deposit) throw new TenderError("DEPOSIT_UNKNOWN", "MoonPay Commerce did not reveal this payer's deposit wallet for the pay link; pass tx instead.");
+          paymentTx = (await findPayment({ rail: payerRail, payer: payer_address, deposit })) ?? undefined;
+          if (!paymentTx) throw new TenderError("TX_NOT_FOUND", "No USDC payment from payer_address to this pay link's deposit wallet was found yet.");
+          resolveDeposit = async () => deposit;
+        }
+        const receipt = await verifyPayment({ tx: paymentTx, payer: payer_address, product, resolveDeposit });
         const params = new URLSearchParams({ payer: payer_address, ...(ref?.kind === "paylink" ? { link: ref.id } : {}) });
-        const receiptUrl = `${SITE_URL}/r/${receipt.rail}/${tx}?${params}`;
+        const receiptUrl = `${SITE_URL}/r/${receipt.rail}/${paymentTx}?${params}`;
         const marks = receipt.checks.map((c) => `${c.ok === true ? "OK" : c.ok === false ? "FAIL" : "PENDING"} ${c.name}: ${c.detail}`).join("\n");
         const text = [
           `Receipt ${receipt.status.toUpperCase()} on ${receipt.rail}: ${receipt.payment.amountUsd} USDC paid.`,
