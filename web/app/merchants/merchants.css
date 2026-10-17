@@ -1,0 +1,89 @@
+/* /merchants — a register of certificates. Scoped to .pg-merch. */
+.pg-merch .mtop{padding-top:76px;padding-bottom:72px}
+.pg-merch .h1c{font:400 84px/.96 var(--display);font-variation-settings:"opsz" 144,"SOFT" 0,"WONK" 0;letter-spacing:-.042em;color:var(--i900);text-wrap:balance}
+.pg-merch .lead code,.pg-merch .lsteps code{font:500 13px/1 var(--mono);color:var(--i700);background:var(--cotton-2);padding:2px 5px;border-radius:2px}
+.pg-merch .regmeta{display:flex;flex-wrap:wrap;gap:12px 44px;margin-top:26px;padding-top:16px;border-top:3px double var(--hair2)}
+.pg-merch .regmeta dt{font:500 9.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.pg-merch .regmeta dd{margin-top:7px;font:400 24px/1 var(--display);font-variation-settings:"opsz" 72;letter-spacing:-.02em;color:var(--i900)}
+.pg-merch .regmeta dd a{font:500 14px/1 var(--mono);letter-spacing:0;color:var(--i700);border-bottom:1px solid var(--i300);padding-bottom:3px}
+.pg-merch .regmeta dd a:hover{border-color:var(--i700)}
+
+.pg-merch .ledger-sec{padding-top:72px;padding-bottom:96px}
+.pg-merch .ledger{display:grid;grid-template-columns:1fr 1fr;gap:44px 40px;align-items:stretch}
+.pg-merch .lcert{display:flex;flex-direction:column}
+.pg-merch .lc-foot{margin-top:auto !important;padding-top:24px}
+.pg-merch .lcert{margin:5px;overflow:hidden;padding-bottom:22px}
+.pg-merch .strip{display:block;width:100%;height:26px}
+.pg-merch .lc-top,.pg-merch .json-top{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:18px 28px 0}
+.pg-merch .rc-title{font:400 19px/1 var(--display);font-variation-settings:"opsz" 48;color:var(--i700)}
+.pg-merch .lc-body{display:grid;grid-template-columns:116px 1fr auto;gap:24px;align-items:center;padding:22px 28px 0}
+.pg-merch .lc-seal{position:relative;width:116px;height:116px}
+.pg-merch .lc-seal canvas{position:absolute;inset:0;width:100%;height:100%}
+.pg-merch .lc-main{min-width:0}
+.pg-merch .lc-main h2{font:400 44px/1 var(--display);font-variation-settings:"opsz" 144,"SOFT" 0,"WONK" 0;letter-spacing:-.04em;color:var(--i900)}
+.pg-merch .by{margin-top:8px;font-size:15px;color:var(--muted)}
+.pg-merch .by b{font-weight:500;color:var(--i900)}
+.pg-merch .sum{margin-top:10px;font-size:15px;line-height:1.5;color:var(--ink);max-width:30em}
+.pg-merch .amt{align-self:start;min-width:120px;margin:4px 4px 0 0;padding:14px 16px 12px;text-align:right;box-shadow:0 0 0 1px var(--i700),0 0 0 3px var(--cotton-0),0 0 0 4px var(--i700);background:var(--cotton-0)}
+.pg-merch .amt b{display:block;font:400 42px/1 var(--display);font-variation-settings:"opsz" 144;letter-spacing:-.045em;color:var(--i900)}
+.pg-merch .amt.open b{max-width:6.5em;font-size:22px;line-height:1.05;letter-spacing:-.02em;font-variation-settings:"opsz" 72}
+.pg-merch .amt small{display:block;margin-top:6px;font:500 10px/1 var(--mono);letter-spacing:.2em;color:var(--i500)}
+.pg-merch .lc-facts{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;column-gap:36px;margin:24px 28px 0;padding-top:14px;border-top:3px double var(--hair2)}
+.pg-merch .lc-facts dt{font:500 9.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.pg-merch .lc-facts dd{margin-top:7px;font:500 14px/1.35 var(--body);color:var(--i900)}
+.pg-merch .rails{display:flex;flex-wrap:wrap;gap:6px}
+.pg-merch .rail{font:500 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--i700);padding:5px 7px 4px;box-shadow:0 0 0 1px var(--i700),0 0 0 2px var(--cotton-0),0 0 0 3px var(--i300)}
+.pg-merch .lc-foot{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;margin:0 28px}
+.pg-merch .lc-links{display:flex;align-items:center;gap:26px}
+.pg-merch .lc-links .link{display:inline-flex;align-items:center;gap:6px}
+.pg-merch .lc-links .link svg{width:13px;height:13px}
+.pg-merch .ghostcert{grid-column:1/-1;margin:5px;border:1px dashed var(--i300);border-radius:2px;display:block}
+.pg-merch .ghost-in{display:grid;grid-template-columns:56px 1fr auto;gap:4px 22px;align-items:center;padding:22px 28px}
+.pg-merch .ghost-in .ghost{grid-row:span 2;width:56px;height:56px;border-radius:50%;border:1px dashed var(--i300);display:grid;place-items:center;font:400 26px/1 var(--display);color:var(--muted)}
+.pg-merch .ghost-in h2{font:400 30px/1 var(--display);font-variation-settings:"opsz" 72;letter-spacing:-.02em;color:var(--i900)}
+.pg-merch .ghost-in p{margin-top:6px;font-size:14.5px;line-height:1.5;color:var(--muted)}
+.pg-merch .ghost-in .link{grid-column:3;grid-row:1/span 2;justify-self:end}
+
+.pg-merch .listgrid{display:grid;grid-template-columns:6fr 6fr;column-gap:56px;align-items:start}
+.pg-merch .lsteps{border-top:3px double var(--i700)}
+.pg-merch .lsteps li{display:grid;grid-template-columns:44px 1fr;gap:12px;padding:22px 0 20px;border-bottom:1px solid var(--hair)}
+.pg-merch .cp-n{font:italic 400 24px/1.1 var(--display);font-variation-settings:"opsz" 72;color:var(--i500)}
+.pg-merch .lsteps h3{font:400 26px/1.1 var(--display);font-variation-settings:"opsz" 72;letter-spacing:-.02em;color:var(--i900)}
+.pg-merch .lsteps p{margin-top:8px;font-size:15.5px;line-height:1.55;color:var(--ink)}
+.pg-merch .lsteps a{color:var(--i700);border-bottom:1px solid var(--i300)}
+.pg-merch .lsteps a:hover{border-color:var(--i700)}
+.pg-merch .json{margin:5px;overflow:hidden;padding-bottom:26px}
+.pg-merch .json pre{margin:18px 28px 0;padding:18px 0 6px;border-top:3px double var(--hair2);font:500 13.5px/1.75 var(--mono);color:var(--i900);overflow-x:auto;white-space:pre}
+.pg-merch .json-foot{display:flex;flex-wrap:wrap;align-items:center;gap:20px 30px;margin:22px 28px 0}
+
+@media (max-width:1180px){
+  .pg-merch .ledger{grid-template-columns:1fr}
+}
+@media (max-width:860px){
+  .pg-merch .mtop{padding-top:40px;padding-bottom:48px}
+  .pg-merch .h1c{font-size:46px;line-height:1}
+  .pg-merch .regmeta{gap:12px 28px}
+  .pg-merch .regmeta dd{font-size:20px}
+  .pg-merch .ledger-sec{padding-top:48px;padding-bottom:64px}
+  .pg-merch .ledger{gap:36px}
+  .pg-merch .lc-top,.pg-merch .json-top{flex-direction:column;gap:8px;padding:16px 18px 0}
+  .pg-merch .lc-top .serialtxt,.pg-merch .json-top .serialtxt{font-size:10.5px;letter-spacing:.06em}
+  .pg-merch .lc-body{grid-template-columns:84px 1fr;gap:16px;padding:18px 18px 0}
+  .pg-merch .lc-seal{width:84px;height:84px}
+  .pg-merch .lc-main h2{font-size:34px}
+  .pg-merch .amt{grid-column:1/-1;justify-self:start;display:flex;align-items:baseline;gap:10px;margin:4px;padding:10px 14px;text-align:left}
+  .pg-merch .amt b{font-size:32px}
+  .pg-merch .amt.open b{font-size:20px;max-width:none}
+  .pg-merch .amt small{margin:0}
+  .pg-merch .lc-facts{grid-template-columns:1fr 1fr;row-gap:14px;margin:20px 18px 0}
+  .pg-merch .lc-foot{grid-template-columns:1fr;margin:0 18px;padding-top:20px}
+  .pg-merch .lc-links{flex-wrap:wrap;gap:16px 22px}
+  .pg-merch .ghost-in{padding:22px 18px;grid-template-columns:44px 1fr}
+  .pg-merch .ghost-in .link{grid-column:2;grid-row:auto;justify-self:start;margin-top:10px}
+  .pg-merch .ghost-in .ghost{width:44px;height:44px}
+  .pg-merch .ghost-in h2{font-size:25px}
+  .pg-merch .listgrid{grid-template-columns:1fr;row-gap:40px}
+  .pg-merch .lsteps h3{font-size:22px}
+  .pg-merch .json pre{margin:16px 18px 0;font-size:11.5px}
+  .pg-merch .json-foot{margin:20px 18px 0}
+}

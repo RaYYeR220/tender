@@ -20,6 +20,9 @@ export const REPO = "https://github.com/RaYYeR220/tender";
 
 export type CheckState = "ok" | "fail" | "warn";
 
+const RAIL_NAME: Record<string, string> = { solana: "Solana", base: "Base" };
+const railName = (rail: string) => RAIL_NAME[rail] ?? rail;
+
 export interface ReadinessCheck {
   id: string;
   label: string;
@@ -77,7 +80,7 @@ export async function scan(input: string): Promise<Readiness> {
   }
   checks.push(
     product.rails.length
-      ? { id: "rail", label: "USDC on Solana or Base", state: "ok", detail: `Receives USDC on ${product.rails.join(" and ")}.` }
+      ? { id: "rail", label: "USDC on Solana or Base", state: "ok", detail: `Receives USDC on ${product.rails.map(railName).join(" and ")}.` }
       : { id: "rail", label: "USDC on Solana or Base", state: "fail", detail: "No USDC recipient on a chain PayBox pays on.", fix: "Add a USDC payout wallet on Solana or Base." },
   );
 
@@ -86,7 +89,7 @@ export async function scan(input: string): Promise<Readiness> {
   if (quote.ok && quote.options.length) {
     for (const option of quote.options) {
       const fee =
-        product.pricing.mode === "fixed" && product.usdcPriced && BigInt(option.amount) >= BigInt(product.pricing.amount)
+        product.pricing.mode === "fixed" && product.usdcPriced && BigInt(option.amount) > BigInt(product.pricing.amount)
           ? formatUsd((BigInt(option.amount) - BigInt(product.pricing.amount)).toString())
           : null;
       quotes.push({ rail: option.rail, amountUsd: formatUsd(option.amount), feeUsd: fee });
@@ -95,7 +98,7 @@ export async function scan(input: string): Promise<Readiness> {
       id: "x402",
       label: "Live x402 quote",
       state: "ok",
-      detail: quotes.map((q) => `${q.amountUsd} on ${q.rail}${q.feeUsd ? ` (${q.feeUsd} fees)` : ""}`).join(" · "),
+      detail: quotes.map((q) => `${q.amountUsd} on ${railName(q.rail)}${q.feeUsd ? ` (${q.feeUsd} fees)` : ""}`).join(" · "),
     });
   } else {
     checks.push({
