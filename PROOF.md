@@ -39,6 +39,6 @@ In the same chat the agent was asked for two more purchases. Neither reached Pay
 
 ## Tests and plugin checks
 
-- `packages/core`: 45 tests (`npm test`), including recorded mainnet responses.
+- `packages/core`: 48 tests (`npm test`), including recorded mainnet responses.
 - `plugin`: PayBox starter v1.0.2 conformance — type-check, two reproducible builds with identical bytes, sample call (`./run-plugin-test.sh`).
 - PayBox portal: hosted checks pass with 5 tools; the x402 proposal validated as "Payment challenge validated".
