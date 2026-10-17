@@ -1,0 +1,9 @@
+# Reviewing Tender in five minutes
+
+1. **See a real purchase.** Open the receipt for the 08:23 UTC flat white: [tender-checkout.vercel.app/r/solana/3d4KqBCB…](https://tender-checkout.vercel.app/r/solana/3d4KqBCBXb8aWiwJRakGDuiX47VT7eFWcLB1HkTi6U94Qka4P6cvD2zN99ZCKspQxkFG45eDfRRdTBFdWMjNrFL9?payer=7VA3n2q4rxv9rKrVEWJPdoa5pSAS8xku5ECnP6VbbCts&link=6ad323565c71e316b383ea8a). It is recomputed from Solana on load: the payment left the PayBox wallet, landed in the deposit wallet MoonPay Commerce assigns that payer for that pay link, and matches the price. A settled example with the merchant payout and fees: [receipt](https://tender-checkout.vercel.app/r/solana/euuEheoCaV2PiM2GKh3qTtfT1qokfn1NspddY6m6QhmmNsPi2J9itj12EXyXqCxtebgxLxPyUeqXyMs5dHwgC9y?payer=6UphUVdkevZD59y4XX5yJ4gd2kWDLHWDXuY7weYTov3).
+2. **Check a pay link like a merchant would.** [tender-checkout.vercel.app/check](https://tender-checkout.vercel.app/check) → try the two examples. The flat white passes every check; the signed print fails on its required email field, with the fix.
+3. **Use it from your own agent.** Enable Tender in PayBox, connect your agent, and ask: *"Buy a flat white from Tender Coffee, don't spend more than fifty cents."* Then *"Buy the signed print with a $5 cap"* to watch the refusal. The flat white is a real $0.25 purchase from a verified MoonPay Commerce merchant we run for this purpose.
+4. **Read the refusal logic.** [`packages/core/src/guards.ts`](packages/core/src/guards.ts) — every reason a checkout is refused, with no proposal sent. The plugin's handlers are in [`plugin/src/plugin.ts`](plugin/src/plugin.ts).
+5. **Run the checks.** `cd packages/core && npm ci && npm test` (45 tests), `./run-plugin-test.sh` (PayBox conformance in the reference toolchain), `node scripts/eval.mjs` (live scorecard against MoonPay Commerce).
+
+Everything we claim, and how strongly, is in [CLAIMS.md](CLAIMS.md). Transaction links are in [PROOF.md](PROOF.md).
