@@ -5,6 +5,8 @@
 Tender is a [PayBox](https://paybox.sh) plugin. It lets an AI agent buy from any [MoonPay Commerce](https://moonpay.hel.io) merchant in USDC on Solana or Base, using the x402 checkout every MoonPay Commerce pay link already exposes. Before PayBox is ever asked to approve anything, Tender re-reads the live price and refuses the payment when it is over the user's cap, the wallet can't cover it, or the checkout needs something an agent can't give. After the payment, it rebuilds the receipt from chain data: payer → deposit wallet → merchant, every unit accounted for.
 
 - Live site and registry: https://tender-checkout.vercel.app
+- A real purchase an agent made through PayBox with Tender: [receipt](https://tender-checkout.vercel.app/r/solana/3d4KqBCBXb8aWiwJRakGDuiX47VT7eFWcLB1HkTi6U94Qka4P6cvD2zN99ZCKspQxkFG45eDfRRdTBFdWMjNrFL9?payer=7VA3n2q4rxv9rKrVEWJPdoa5pSAS8xku5ECnP6VbbCts&link=6ad323565c71e316b383ea8a) · [Solscan](https://solscan.io/tx/3d4KqBCBXb8aWiwJRakGDuiX47VT7eFWcLB1HkTi6U94Qka4P6cvD2zN99ZCKspQxkFG45eDfRRdTBFdWMjNrFL9)
+- Reviewing? Start with [JUDGES.md](JUDGES.md). Every claim and its evidence: [CLAIMS.md](CLAIMS.md) · [PROOF.md](PROOF.md)
 - Plugin source: [`plugin/`](plugin) · shared checkout core: [`packages/core/`](packages/core) · site: [`web/`](web)
 
 ## Why
@@ -39,7 +41,7 @@ PayBox ── user approves ──▶ pays MoonPay Commerce ──▶ deposit wa
    | `MERCHANT_UNVERIFIED` | Only when the caller sets `require_verified_merchant` |
 
 3. **Settle.** Otherwise Tender returns an `io.paybox/transactionProposal` of kind `x402` for the exact quoted amount. PayBox shows it, the user approves, PayBox pays and retries the request, and MoonPay Commerce confirms the order.
-4. **Verify.** `verify_purchase` takes the payment transaction and checks, from chain data alone: the USDC left the payer's own token account; it landed in the deposit wallet MoonPay Commerce assigns *this payer* for *this pay link*; the sweep reached the payout wallet listed on the pay link; and merchant share plus fees equal the payment exactly. Anyone can open the same receipt at `/r/<chain>/<tx>`.
+4. **Verify.** PayBox completes x402 payments through a gateway and gives the agent no transaction signature, so `verify_purchase` finds the payment itself from the pay link and the payer. It then checks, from chain data alone: the USDC left the payer's own token account; it landed in the deposit wallet MoonPay Commerce assigns *this payer* for *this pay link*; the sweep reached the payout wallet listed on the pay link; and merchant share plus fees equal the payment exactly. Anyone can open the same receipt at `/r/<chain>/<tx>`.
 
 ## Tools
 
@@ -49,7 +51,7 @@ PayBox ── user approves ──▶ pays MoonPay Commerce ──▶ deposit wa
 | `inspect_checkout` | Dry run: product, live quote, balance, and every reason it would be refused | No |
 | `checkout` | Fail-closed x402 payment proposal; PayBox asks the user to approve | Proposes |
 | `list_catalog` | The store this install represents (merchant mode) | No |
-| `verify_purchase` | On-chain receipt with hop-by-hop checks | No |
+| `verify_purchase` | On-chain receipt with hop-by-hop checks; finds the payment from the pay link if no signature is given | No |
 
 ## For merchants
 
@@ -62,7 +64,7 @@ PayBox ── user approves ──▶ pays MoonPay Commerce ──▶ deposit wa
 Requirements: Node.js 24, pnpm 11.11.0 for the plugin (the PayBox starter toolchain), npm for the rest. On Windows the plugin checks run in Docker.
 
 ```bash
-# core library and tests
+# core library and tests (45)
 cd packages/core && npm ci && npm test
 
 # plugin: type-check, reproducible build, PayBox conformance
@@ -94,7 +96,8 @@ No secrets are needed for buying. Nothing sensitive is ever bundled.
 - Network fees put a floor of roughly $0.10 under a payment; smaller amounts are refused by MoonPay Commerce's circuit breaker.
 - MoonPay Commerce's x402 endpoints allow ten requests a minute per IP. Tender asks for a quote only when metadata hasn't already ruled the checkout out.
 - PayBox pays x402 on Solana and Base, so merchants who only take USDC on other chains show up as `RAIL_UNAVAILABLE`.
-- Charge links (single-use browser checkouts) are reported as unsupported.
+- Charge links (single-use browser checkouts, MoonPay Commerce's invoices) are reported as unsupported: its x402 endpoint does not accept them, and paying one would need a deposit-style Solana transfer that Tender does not build yet.
+- MoonPay Commerce sweeps small payments from the deposit wallet to the merchant on its own schedule. Until it does, a receipt reads *awaiting sweep*; Tender never reports a hop it cannot see.
 - The balance check uses public RPC; if it can't be read, Tender warns and PayBox still checks funds before signing.
 
 ## License
